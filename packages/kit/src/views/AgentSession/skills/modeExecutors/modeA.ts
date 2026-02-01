@@ -11,6 +11,7 @@ import {
   EAgentAuthorizationMode,
   EAgentAuthorizationStatus,
   type IAgentAuthorizationRequest,
+  type IAgentAuthorization,
 } from '../../types';
 import type { IAuthorizationResult } from '../types';
 
@@ -237,12 +238,8 @@ async function transferToSubWallet(params: {
  * This triggers OneKey's built-in password modal
  */
 async function getUserPassword(): Promise<string> {
-  // TODO: Implement proper password request via OneKey UI
-  // For now, this is a placeholder that will need to be replaced with
-  // backgroundApiProxy.servicePassword.promptPassword()
-  
-  console.warn('[ModeA] Password request not implemented - using empty password');
-  return '';
+  const { promptPassword } = await import('../../services/wallet');
+  return promptPassword();
 }
 
 /**
