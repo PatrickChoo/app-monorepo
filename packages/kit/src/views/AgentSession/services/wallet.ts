@@ -1,282 +1,170 @@
 /**
- * Agent Session Wallet Service
+ * Wallet Service - HD Derivation and Transfer Operations
  * 
- * Handles wallet operations for Agent Sessions (Mode A: Derived Sub-Accounts)
+ * This service wraps OneKey's wallet APIs for Agent Session use.
  */
 
+import type {
+  IAccountDeriveTypes,
+  IAccountSelectorActiveAccountInfo,
+} from '@onekeyhq/kit-bg/src/dbs/simple/entity/SimpleDbEntityAccountSelector';
 import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
-import vaultFactory from '@onekeyhq/kit-bg/src/vaults/factory';
-import type { IUnsignedTxPro } from '@onekeyhq/kit-bg/src/vaults/types';
+import { getNetworkIdImpl } from '@onekeyhq/shared/src/engine/engineConsts';
 
 /**
- * Get current active wallet
- */
-export async function getActiveWallet(): Promise<{
-  walletId: string;
-  accountId: string;
-  address: string;
-  networkId: string;
-}> {
-  try {
-    // Get active account
-    const activeAccount = await backgroundApiProxy.serviceAccount.getActiveAccount();
-    
-    if (!activeAccount.account || !activeAccount.wallet) {
-      throw new Error('No active account found');
-    }
-
-    return {
-      walletId: activeAccount.wallet.id,
-      accountId: activeAccount.account.id,
-      address: activeAccount.account.address,
-      networkId: activeAccount.network?.id || '',
-    };
-  } catch (error) {
-    console.error('[WalletService] Failed to get active wallet:', error);
-    throw error;
-  }
-}
-
-/**
- * Derive a sub-account for Agent Session (Mode A)
+ * Derive a new sub-account for the agent
  * 
- * Creates a new HD account with the next available index
- * This account will be used as an isolated wallet for the agent
+ * This creates a new account using HD derivation.
+ * The account will be added to the wallet but won't be visible in the main UI.
  */
 export async function deriveSubAccount(params: {
   walletId: string;
   networkId: string;
 }): Promise<{
-  accountId: string;
   address: string;
+  accountId: string;
   path: string;
-  index: number;
 }> {
+  const { walletId, networkId } = params;
+
+  console.log('[WalletService] Deriving sub-account:', { walletId, networkId });
+
   try {
-    const { walletId, networkId } = params;
+    // Get the next available index for this wallet
+    const nextIndex = await getNextAccountIndex(walletId, networkId);
 
-    console.log('[WalletService] Deriving sub-account...', { walletId, networkId });
-
-    // Add next HD account
-    const result = await backgroundApiProxy.serviceAccount.addHDNextIndexedAccount({
+    // Derive the account using OneKey's account service
+    const account = await backgroundApiProxy.serviceAccount.addHDAccount({
       walletId,
+      networkId,
+      indexes: [nextIndex],
+      names: [`Agent Wallet #${nextIndex}`],
     });
 
-    if (!result?.account) {
-      throw new Error('Failed to create HD account');
+    if (!account || account.length === 0) {
+      throw new Error('Failed to derive sub-account');
     }
 
-    const account = result.account;
+    const newAccount = account[0];
 
-    // Get address for the specific network
-    const vault = await vaultFactory.getVault({
-      networkId,
-      accountId: account.id,
-    });
-
-    const addressDetail = await vault.buildAccountAddressDetail({
-      account,
-      networkId,
-    });
-
-    console.log('[WalletService] Sub-account derived successfully:', {
-      accountId: account.id,
-      address: addressDetail.address,
-      path: account.path,
+    console.log('[WalletService] Sub-account derived:', {
+      address: newAccount.address,
+      accountId: newAccount.id,
+      path: newAccount.path,
     });
 
     return {
-      accountId: account.id,
-      address: addressDetail.address,
-      path: account.path || '',
-      index: result.indexedAccount?.index || 0,
+      address: newAccount.address,
+      accountId: newAccount.id,
+      path: newAccount.path || `m/44'/60'/0'/0/${nextIndex}`, // Default ETH path
     };
   } catch (error) {
     console.error('[WalletService] Failed to derive sub-account:', error);
-    throw error;
+    throw new Error(
+      `Failed to derive sub-account: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
 /**
- * Transfer funds to sub-account (Mode A initial funding)
+ * Get the next available account index for a wallet
+ */
+async function getNextAccountIndex(
+  walletId: string,
+  networkId: string,
+): Promise<number> {
+  try {
+    // Get all accounts for this wallet and network
+    const accounts =
+      await backgroundApiProxy.serviceAccount.getAccountsOfWallet({
+        walletId,
+        networkId,
+      });
+
+    // Find the maximum index
+    let maxIndex = -1;
+    for (const account of accounts) {
+      if (account.path) {
+        // Extract index from path (e.g., m/44'/60'/0'/0/5 → 5)
+        const match = account.path.match(/\/(\d+)$/);
+        if (match) {
+          const index = parseInt(match[1], 10);
+          if (index > maxIndex) {
+            maxIndex = index;
+          }
+        }
+      }
+    }
+
+    // Return next index
+    return maxIndex + 1;
+  } catch (error) {
+    console.error('[WalletService] Failed to get next account index:', error);
+    return 0; // Fallback to index 0
+  }
+}
+
+/**
+ * Transfer funds to a sub-account
  * 
- * Transfers native tokens from main account to the agent's sub-account
+ * This creates and broadcasts a transaction from the main account to the sub-account.
  */
 export async function transferToSubAccount(params: {
   fromAccountId: string;
   toAddress: string;
-  amount: string; // In base unit (wei for ETH)
+  amount: string;
   networkId: string;
   password: string;
 }): Promise<{
   txHash: string;
-  signedTx: any;
 }> {
+  const { fromAccountId, toAddress, amount, networkId, password } = params;
+
+  console.log('[WalletService] Transferring to sub-account:', {
+    from: fromAccountId,
+    to: toAddress,
+    amount,
+    networkId,
+  });
+
   try {
-    const { fromAccountId, toAddress, amount, networkId, password } = params;
-
-    console.log('[WalletService] Initiating transfer to sub-account...', {
-      fromAccountId,
-      toAddress,
-      amount,
-      networkId,
-    });
-
-    // Get from account details
-    const fromAccount = await backgroundApiProxy.serviceAccount.getAccount({
-      accountId: fromAccountId,
-      networkId,
-    });
-
-    if (!fromAccount) {
-      throw new Error(`Account not found: ${fromAccountId}`);
-    }
-
-    // Get vault instance
-    const vault = await vaultFactory.getVault({
-      networkId,
-      accountId: fromAccountId,
-    });
-
-    // Build unsigned transaction
+    // Build transaction
     const unsignedTx = await backgroundApiProxy.serviceSend.buildUnsignedTx({
       accountId: fromAccountId,
       networkId,
-      transfersInfo: [
-        {
-          from: fromAccount.address,
-          to: toAddress,
-          amount,
-          tokenInfo: {
-            address: '', // Native token
-            isNative: true,
-          },
-        },
-      ],
+      encodedTx: {
+        to: toAddress,
+        value: amount,
+        data: '0x', // Simple transfer
+      },
     });
 
     console.log('[WalletService] Unsigned tx built:', unsignedTx);
 
-    // Sign transaction
-    const signedTx = await vault.signTransaction({
-      unsignedTx: unsignedTx as IUnsignedTxPro,
+    // Sign and broadcast transaction
+    const signedTx = await backgroundApiProxy.serviceSend.signTransaction({
+      accountId: fromAccountId,
+      networkId,
+      unsignedTx,
       password,
     });
 
-    console.log('[WalletService] Transaction signed');
-
-    // Broadcast transaction
     const result = await backgroundApiProxy.serviceSend.broadcastTransaction({
       accountId: fromAccountId,
       networkId,
       signedTx,
-      accountAddress: fromAccount.address,
     });
 
-    console.log('[WalletService] Transfer successful:', result.txid);
+    console.log('[WalletService] Transaction broadcasted:', result.txid);
 
     return {
       txHash: result.txid,
-      signedTx,
     };
   } catch (error) {
     console.error('[WalletService] Transfer failed:', error);
-    throw error;
-  }
-}
-
-/**
- * Execute transaction from sub-account (Mode A transaction)
- * 
- * Signs and broadcasts a transaction using the agent's sub-account
- */
-export async function executeFromSubAccount(params: {
-  subAccountId: string;
-  to: string;
-  amount: string; // In base unit
-  networkId: string;
-  password: string;
-  data?: string; // Optional contract call data
-}): Promise<{
-  txHash: string;
-  signedTx: any;
-}> {
-  try {
-    const { subAccountId, to, amount, networkId, password, data } = params;
-
-    console.log('[WalletService] Executing from sub-account...', {
-      subAccountId,
-      to,
-      amount,
-      networkId,
-      hasData: !!data,
-    });
-
-    // Get sub-account details
-    const subAccount = await backgroundApiProxy.serviceAccount.getAccount({
-      accountId: subAccountId,
-      networkId,
-    });
-
-    if (!subAccount) {
-      throw new Error(`Sub-account not found: ${subAccountId}`);
-    }
-
-    // Get vault instance
-    const vault = await vaultFactory.getVault({
-      networkId,
-      accountId: subAccountId,
-    });
-
-    // Build unsigned transaction
-    const encodedTx = await vault.buildEncodedTx({
-      transfersInfo: [
-        {
-          from: subAccount.address,
-          to,
-          amount,
-          tokenInfo: {
-            address: '',
-            isNative: true,
-          },
-        },
-      ],
-    });
-
-    // Add custom data if provided (for contract calls)
-    if (data) {
-      encodedTx.data = data;
-    }
-
-    const unsignedTx = await vault.buildUnsignedTx({ encodedTx });
-
-    console.log('[WalletService] Unsigned tx built:', unsignedTx);
-
-    // Sign transaction
-    const signedTx = await vault.signTransaction({
-      unsignedTx: unsignedTx as IUnsignedTxPro,
-      password,
-    });
-
-    console.log('[WalletService] Transaction signed');
-
-    // Broadcast transaction
-    const result = await backgroundApiProxy.serviceSend.broadcastTransaction({
-      accountId: subAccountId,
-      networkId,
-      signedTx,
-      accountAddress: subAccount.address,
-    });
-
-    console.log('[WalletService] Execution successful:', result.txid);
-
-    return {
-      txHash: result.txid,
-      signedTx,
-    };
-  } catch (error) {
-    console.error('[WalletService] Execution failed:', error);
-    throw error;
+    throw new Error(
+      `Transfer failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
@@ -287,35 +175,52 @@ export async function getAccountBalance(params: {
   accountId: string;
   networkId: string;
 }): Promise<{
-  nativeBalance: string;
-  tokens: Array<{
-    address: string;
-    symbol: string;
-    balance: string;
-  }>;
+  balance: string;
+  symbol: string;
 }> {
-  try {
-    const { accountId, networkId } = params;
+  const { accountId, networkId } = params;
 
-    // Get account tokens
-    const tokens = await backgroundApiProxy.serviceToken.fetchAccountTokens({
+  try {
+    const balances = await backgroundApiProxy.serviceToken.getAccountBalances({
       accountId,
       networkId,
     });
 
-    // Find native token
-    const nativeToken = tokens.tokens.find((t) => t.isNative);
+    if (!balances || balances.length === 0) {
+      return {
+        balance: '0',
+        symbol: 'ETH', // Default
+      };
+    }
+
+    // Return native token balance
+    const nativeBalance = balances.find((b) => b.isNative);
 
     return {
-      nativeBalance: nativeToken?.balanceParsed || '0',
-      tokens: tokens.tokens.map((t) => ({
-        address: t.address,
-        symbol: t.symbol,
-        balance: t.balanceParsed,
-      })),
+      balance: nativeBalance?.balance || '0',
+      symbol: nativeBalance?.symbol || 'ETH',
     };
   } catch (error) {
     console.error('[WalletService] Failed to get balance:', error);
-    throw error;
+    return {
+      balance: '0',
+      symbol: 'ETH',
+    };
+  }
+}
+
+/**
+ * Prompt user for password
+ * 
+ * This triggers OneKey's built-in password modal.
+ */
+export async function promptPassword(): Promise<string> {
+  try {
+    const password =
+      await backgroundApiProxy.servicePassword.promptPasswordVerify();
+    return password;
+  } catch (error) {
+    console.error('[WalletService] Password prompt failed:', error);
+    throw new Error('Password verification failed');
   }
 }

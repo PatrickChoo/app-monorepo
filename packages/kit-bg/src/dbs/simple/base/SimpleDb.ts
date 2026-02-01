@@ -530,4 +530,13 @@ export class SimpleDb {
     Object.defineProperty(this, 'rookieGuide', { value });
     return value;
   }
+
+  get agentAuthorizations() {
+    const SimpleDbEntityAgentAuthorizations = (
+      require('../entity/SimpleDbEntityAgentAuthorizations') as unknown as typeof import('../entity/SimpleDbEntityAgentAuthorizations')
+    ).SimpleDbEntityAgentAuthorizations;
+    const value = new SimpleDbEntityAgentAuthorizations();
+    Object.defineProperty(this, 'agentAuthorizations', { value });
+    return value;
+  }
 }
