@@ -10,8 +10,12 @@ const AgentDashboard = LazyLoadPage(
   () => import('../../../views/AgentSession/pages/AgentDashboard'),
 );
 
+const AuthorizationList = LazyLoadPage(
+  () => import('../../../views/AgentSession/pages/AuthorizationListPage'),
+);
+
 const AuthorizationDetail = LazyLoadPage(
-  () => import('../../../views/AgentSession/pages/AuthorizationDetail'),
+  () => import('../../../views/AgentSession/pages/AuthorizationDetailPage'),
 );
 
 const DemoScenarios = LazyLoadPage(
@@ -29,8 +33,14 @@ export const agentSessionRouters: ITabSubNavigatorConfig<
     headerShown: !platformEnv.isNative,
   },
   {
+    name: ETabAgentSessionRoutes.TabAuthorizationList,
+    rewrite: '/authorizations',
+    component: AuthorizationList,
+    headerShown: !platformEnv.isNative,
+  },
+  {
     name: ETabAgentSessionRoutes.TabAuthorizationDetail,
-    rewrite: '/authorization/:authorizationId',
+    rewrite: '/authorization/:id',
     component: AuthorizationDetail,
     headerShown: !platformEnv.isNative,
   },
