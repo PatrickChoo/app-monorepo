@@ -60,6 +60,8 @@ const nativeTabIcons = {
       : require('@onekeyhq/components/svg/outline/code-brackets.svg'),
 };
 
+import { agentSessionRouters } from './AgentSession/router';
+
 type IGetTabRouterParams = {
   freezeOnBlur?: boolean;
 };
@@ -229,6 +231,19 @@ export const useTabRouterConfig = (params?: IGetTabRouterParams) => {
             hideOnTabBar: isModalStack,
           },
       !platformEnv.isNative ? referFriendsTabConfig : undefined,
+      platformEnv.isDev
+        ? {
+            name: ETabRoutes.AgentSession,
+            tabBarIcon: (focused?: boolean) =>
+              focused ? 'RobotSolid' : 'RobotOutline',
+            translationId: ETranslations.global_ai_agent,
+            freezeOnBlur: Boolean(params?.freezeOnBlur),
+            rewrite: '/agent-session',
+            exact: true,
+            children: agentSessionRouters,
+            trackId: 'global-agent-session',
+          }
+        : undefined,
       isShowMDDiscover ? getDiscoverRouterConfig(params) : undefined,
       isShowDesktopDiscover ? getDiscoverRouterConfig(params) : undefined,
       platformEnv.isDev

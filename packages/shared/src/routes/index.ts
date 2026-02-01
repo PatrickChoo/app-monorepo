@@ -38,6 +38,7 @@ export * from './tabHome';
 export * from './tabMarket';
 export * from './tabMultiTabBrowser';
 export * from './tabReferFriends';
+export * from './tabAgentSession';
 export * from './tabSwap';
 export * from './testModal';
 export * from './walletAddress';

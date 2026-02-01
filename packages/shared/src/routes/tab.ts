@@ -9,6 +9,7 @@ import type {
 import type { ITabDeviceManagementParamList } from './tabDeviceManagement';
 import type { ITabEarnParamList } from './tabEarn';
 import type { ITabMarketParamList } from './tabMarket';
+import type { ITabAgentSessionParamList } from './tabAgentSession';
 import type { ITabReferFriendsParamList } from './tabReferFriends';
 
 export enum ETabRoutes {
@@ -24,6 +25,7 @@ export enum ETabRoutes {
   DeviceManagement = 'DeviceManagement',
   ReferFriends = 'ReferFriends',
   BulkSend = 'BulkSend',
+  AgentSession = 'AgentSession',
 }
 
 export type ITabStackParamList = {
@@ -39,4 +41,5 @@ export type ITabStackParamList = {
   [ETabRoutes.DeviceManagement]: ITabDeviceManagementParamList;
   [ETabRoutes.ReferFriends]: ITabReferFriendsParamList;
   [ETabRoutes.BulkSend]: undefined;
+  [ETabRoutes.AgentSession]: ITabAgentSessionParamList;
 };
