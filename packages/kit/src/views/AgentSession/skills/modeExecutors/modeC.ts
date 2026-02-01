@@ -146,27 +146,28 @@ async function ensureAAWallet(chainId: string): Promise<string> {
 /**
  * Generate session key pair
  * 
- * TODO: Implement actual key generation
- * This should use secure random generation
+ * Uses SessionKeyService to generate a secure key pair
  */
 async function generateSessionKey(): Promise<{
   publicKey: string;
   privateKey: string;
+  address: string;
 }> {
   console.log('[ModeC] Generating session key pair');
-  
-  // TODO: Real implementation
-  // Use ethers.Wallet.createRandom() or similar
-  // Store private key securely (encrypted in secure storage)
-  
-  // Mock key pair
-  const mockPublicKey = `0x${Math.random().toString(16).slice(2, 42).padStart(40, '0')}`;
-  const mockPrivateKey = `0x${Math.random().toString(16).slice(2, 66).padStart(64, '0')}`;
-  
-  return {
-    publicKey: mockPublicKey,
-    privateKey: mockPrivateKey,
-  };
+
+  try {
+    // Use SessionKeyService
+    const { generateSessionKey: genKey } = await import('../../services/sessionKey');
+    
+    const keyPair = await genKey();
+
+    console.log('[ModeC] Generated session key at address:', keyPair.address);
+
+    return keyPair;
+  } catch (error) {
+    console.error('[ModeC] Failed to generate session key:', error);
+    throw error;
+  }
 }
 
 /**
@@ -212,11 +213,12 @@ async function showAuthorizationModal(params: {
 /**
  * Register session key on AA wallet
  * 
- * TODO: Implement actual contract interaction
+ * Uses SessionKeyService to register the key with AA wallet
  */
 async function registerSessionKey(params: {
   aaWalletAddress: string;
-  sessionPublicKey: string;
+  aaAccountId: string;
+  sessionKey: { publicKey: string; privateKey: string; address: string };
   chainId: string;
   permissions: {
     methodWhitelist?: string[];
@@ -227,16 +229,42 @@ async function registerSessionKey(params: {
 }): Promise<string> {
   console.log('[ModeC] Registering session key:', params);
 
-  // TODO: Real implementation
-  // 1. Build registerSessionKey transaction
-  // 2. Sign with user's wallet
-  // 3. Submit to bundler or broadcast directly
-  // 4. Wait for confirmation
+  try {
+    // Use SessionKeyService
+    const { registerSessionKeyToAAWallet } = await import('../../services/sessionKey');
+    
+    // Get user password
+    const password = await getUserPassword();
 
-  // Mock transaction hash
-  const mockTxHash = `0x${Math.random().toString(16).slice(2)}`;
+    const result = await registerSessionKeyToAAWallet({
+      aaAccountId: params.aaAccountId,
+      sessionKey: params.sessionKey,
+      permissions: {
+        allowedTargets: [], // TODO: Extract from methodWhitelist
+        spendingLimit: params.permissions.spendingLimitUsd?.toString() || '0',
+        validUntil: params.permissions.validUntil,
+        validAfter: params.permissions.validAfter,
+      },
+      networkId: params.chainId,
+      password,
+    });
 
-  return mockTxHash;
+    console.log('[ModeC] Session key registered:', result.txHash);
+    
+    return result.txHash;
+  } catch (error) {
+    console.error('[ModeC] Registration failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get user password for signing
+ */
+async function getUserPassword(): Promise<string> {
+  // TODO: Implement proper password request via OneKey UI
+  console.warn('[ModeC] Password request not implemented - using empty password');
+  return '';
 }
 
 /**

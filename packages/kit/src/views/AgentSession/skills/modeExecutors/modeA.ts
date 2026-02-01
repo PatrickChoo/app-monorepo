@@ -28,16 +28,27 @@ import type { IAuthorizationResult } from '../types';
  * @returns Authorization result with sub-wallet address
  */
 export async function executeModeA(
-  request: IAgentAuthorizationRequest,
+  request: IAgentAuthorizationRequest & {
+    walletId: string; // HD wallet ID
+    mainAccountId: string; // Main account for funding
+    mainAccountAddress: string; // Main account address
+  },
 ): Promise<IAuthorizationResult> {
   console.log('[ModeA] Executing Isolated Sub-Wallet authorization');
   console.log('[ModeA] Request:', request);
 
   try {
-    // 1. Generate new sub-wallet
-    // TODO: Implement actual wallet derivation
-    const subWalletAddress = await generateSubWallet(request.chainId);
-    console.log('[ModeA] Generated sub-wallet:', subWalletAddress);
+    // 1. Generate new sub-wallet using HD derivation
+    const subWallet = await generateSubWallet({
+      chainId: request.chainId,
+      walletId: request.walletId,
+    });
+    console.log(
+      '[ModeA] Generated sub-wallet:',
+      subWallet.address,
+      'at',
+      subWallet.path,
+    );
 
     // 2. Show confirmation modal to user
     const confirmed = await showAuthorizationModal({
@@ -47,22 +58,26 @@ export async function executeModeA(
       networkName: request.networkName,
       amount: request.requestedAmount,
       tokenSymbol: request.tokenSymbol,
-      subWalletAddress,
+      subWalletAddress: subWallet.address,
     });
 
     if (!confirmed) {
       throw new Error('User rejected authorization');
     }
 
-    // 3. Transfer funds to sub-wallet
-    const txHash = await transferToSubWallet({
-      from: 'main-wallet', // TODO: Get actual main wallet address
-      to: subWalletAddress,
-      amount: request.requestedAmount,
-      tokenSymbol: request.tokenSymbol,
-      chainId: request.chainId,
-    });
-    console.log('[ModeA] Transfer tx:', txHash);
+    // 3. Transfer funds from main wallet to sub-wallet
+    let txHash: string | undefined;
+    if (request.requestedAmount && parseFloat(request.requestedAmount) > 0) {
+      txHash = await transferToSubWallet({
+        fromAccountId: request.mainAccountId,
+        fromAddress: request.mainAccountAddress,
+        to: subWallet.address,
+        amount: request.requestedAmount,
+        tokenSymbol: request.tokenSymbol,
+        chainId: request.chainId,
+      });
+      console.log('[ModeA] Transfer tx:', txHash);
+    }
 
     // 4. Create authorization record
     const authorization = await createAuthorization({
@@ -72,11 +87,14 @@ export async function executeModeA(
       networkName: request.networkName,
       agentId: request.agentId,
       agentName: request.agentName,
-      subWalletAddress,
+      subWalletAddress: subWallet.address,
+      subWalletAccountId: subWallet.accountId,
+      subWalletPath: subWallet.path,
       allocatedAmount: request.requestedAmount,
       spentAmount: '0',
       remainingAmount: request.requestedAmount,
       tokenSymbol: request.tokenSymbol,
+      fundingTxHash: txHash,
       rules: request.rules || {},
     });
 
@@ -87,8 +105,10 @@ export async function executeModeA(
       success: true,
       authorizationId: authorization.id,
       mode: EAgentAuthorizationMode.IsolatedSubWallet,
-      subWalletAddress,
+      subWalletAddress: subWallet.address,
+      subWalletAccountId: subWallet.accountId,
       allocatedAmount: request.requestedAmount,
+      fundingTxHash: txHash,
     };
   } catch (error) {
     console.error('[ModeA] Execution failed:', error);
@@ -97,24 +117,40 @@ export async function executeModeA(
 }
 
 /**
- * Generate a new sub-wallet
+ * Generate a new sub-wallet using HD derivation
  * 
- * TODO: Implement actual wallet derivation logic
- * This should use the master seed and derive a new address
+ * Uses WalletService to derive a new sub-account
  */
-async function generateSubWallet(chainId: string): Promise<string> {
-  // Placeholder implementation
-  // Real implementation would:
-  // 1. Get next unused derivation index
-  // 2. Derive wallet at path: m/44'/60'/0'/0/{index}
-  // 3. Store derivation path for recovery
-  
-  console.log('[ModeA] Generating sub-wallet for chain:', chainId);
-  
-  // Mock address generation
-  const mockAddress = `0x${Math.random().toString(16).slice(2, 42).padStart(40, '0')}`;
-  
-  return mockAddress;
+async function generateSubWallet(params: {
+  chainId: string;
+  walletId: string;
+}): Promise<{
+  address: string;
+  accountId: string;
+  path: string;
+}> {
+  console.log('[ModeA] Generating sub-wallet for chain:', params.chainId);
+
+  try {
+    // Use WalletService to derive sub-account
+    const { deriveSubAccount } = await import('../../services/wallet');
+    
+    const result = await deriveSubAccount({
+      walletId: params.walletId,
+      networkId: params.chainId,
+    });
+
+    console.log('[ModeA] Sub-wallet created:', result.address, 'at path:', result.path);
+
+    return {
+      address: result.address,
+      accountId: result.accountId,
+      path: result.path,
+    };
+  } catch (error) {
+    console.error('[ModeA] Failed to generate sub-wallet:', error);
+    throw error;
+  }
 }
 
 /**
@@ -157,10 +193,11 @@ async function showAuthorizationModal(params: {
 /**
  * Transfer funds to sub-wallet
  * 
- * TODO: Implement actual transaction logic
+ * Uses WalletService to transfer funds from main account to sub-account
  */
 async function transferToSubWallet(params: {
-  from: string;
+  fromAccountId: string;
+  fromAddress: string;
   to: string;
   amount?: string;
   tokenSymbol?: string;
@@ -168,17 +205,44 @@ async function transferToSubWallet(params: {
 }): Promise<string> {
   console.log('[ModeA] Transferring funds:', params);
 
-  // TODO: Implement actual transaction
-  // This should:
-  // 1. Build transaction
-  // 2. Sign with main wallet
-  // 3. Broadcast transaction
-  // 4. Wait for confirmation
+  try {
+    // Use WalletService to transfer
+    const { transferToSubAccount } = await import('../../services/wallet');
+    
+    const { fromAccountId, to, amount, chainId } = params;
 
-  // Mock transaction hash
-  const mockTxHash = `0x${Math.random().toString(16).slice(2)}`;
+    // Get user password (this will trigger OneKey's password modal)
+    const password = await getUserPassword();
 
-  return mockTxHash;
+    const result = await transferToSubAccount({
+      fromAccountId,
+      toAddress: to,
+      amount: amount || '0',
+      networkId: chainId,
+      password,
+    });
+
+    console.log('[ModeA] Transfer successful:', result.txHash);
+
+    return result.txHash;
+  } catch (error) {
+    console.error('[ModeA] Transfer failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get user password for signing
+ * 
+ * This triggers OneKey's built-in password modal
+ */
+async function getUserPassword(): Promise<string> {
+  // TODO: Implement proper password request via OneKey UI
+  // For now, this is a placeholder that will need to be replaced with
+  // backgroundApiProxy.servicePassword.promptPassword()
+  
+  console.warn('[ModeA] Password request not implemented - using empty password');
+  return '';
 }
 
 /**
@@ -192,10 +256,13 @@ async function createAuthorization(params: {
   agentId: string;
   agentName: string;
   subWalletAddress?: string;
+  subWalletAccountId?: string;
+  subWalletPath?: string;
   allocatedAmount?: string;
   spentAmount?: string;
   remainingAmount?: string;
   tokenSymbol?: string;
+  fundingTxHash?: string;
   rules: any;
 }): Promise<{ id: string }> {
   console.log('[ModeA] Creating authorization:', params);
@@ -213,8 +280,11 @@ async function createAuthorization(params: {
     agentId: params.agentId,
     agentName: params.agentName,
     subWalletAddress: params.subWalletAddress,
+    subWalletAccountId: params.subWalletAccountId,
+    subWalletPath: params.subWalletPath,
+    fundingTxHash: params.fundingTxHash,
     allocatedAmount: params.allocatedAmount,
-    allocatedAmountUsd: params.allocatedAmount, // Simplified
+    allocatedAmountUsd: params.allocatedAmount, // TODO: Calculate real USD value
     spentAmount: params.spentAmount,
     spentAmountUsd: params.spentAmount,
     remainingAmount: params.remainingAmount,

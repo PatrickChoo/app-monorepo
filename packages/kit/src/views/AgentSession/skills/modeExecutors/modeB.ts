@@ -113,22 +113,87 @@ export async function executeModeB(
 /**
  * Get or deploy Vault contract
  * 
- * TODO: Implement actual Vault contract deployment
- * Check if user already has a Vault on this chain, otherwise deploy new one
+ * Checks for existing Vault, otherwise deploys a new one
  */
-async function getOrDeployVault(chainId: string): Promise<string> {
-  console.log('[ModeB] Getting or deploying Vault for chain:', chainId);
-  
-  // TODO: Real implementation
-  // 1. Check if Vault already exists for this user on this chain
-  // 2. If exists, return existing address
-  // 3. If not, deploy new Vault contract
-  // 4. Store Vault address for future use
-  
-  // Mock Vault address
-  const mockVaultAddress = `0x${Math.random().toString(16).slice(2, 42).padStart(40, '0')}`;
-  
-  return mockVaultAddress;
+async function getOrDeployVault(params: {
+  chainId: string;
+  accountId: string;
+  dailyLimit: string; // in wei
+}): Promise<string> {
+  console.log('[ModeB] Getting or deploying Vault for chain:', params.chainId);
+
+  try {
+    // 1. Check for existing Vault in storage
+    const { getVaultContract } = await import('../../services/storage');
+    const existingVault = await getVaultContract(params.chainId);
+
+    if (existingVault) {
+      console.log('[ModeB] Found existing Vault:', existingVault.address);
+      return existingVault.address;
+    }
+
+    // 2. Deploy new Vault contract
+    console.log('[ModeB] Deploying new Vault contract...');
+    const vaultAddress = await deployVaultContract(params);
+
+    // 3. Store Vault address
+    const { saveVaultContract } = await import('../../services/storage');
+    await saveVaultContract({
+      chainId: params.chainId,
+      address: vaultAddress,
+      deployedAt: Date.now(),
+    });
+
+    console.log('[ModeB] Vault deployed at:', vaultAddress);
+    return vaultAddress;
+  } catch (error) {
+    console.error('[ModeB] Failed to get/deploy Vault:', error);
+    throw error;
+  }
+}
+
+/**
+ * Deploy Vault contract
+ * 
+ * Uses ContractService to deploy a vault contract
+ */
+async function deployVaultContract(params: {
+  chainId: string;
+  accountId: string;
+  dailyLimit: string;
+}): Promise<string> {
+  console.log('[ModeB] Deploying Vault contract:', params);
+
+  try {
+    // Use ContractService to deploy vault
+    const { deployVaultContract: deployVault } = await import('../../services/contract');
+    
+    // Get user password
+    const password = await getUserPassword();
+
+    const result = await deployVault({
+      ownerAccountId: params.accountId,
+      networkId: params.chainId,
+      password,
+      initialFunding: '0', // No initial funding on deployment
+    });
+
+    console.log('[ModeB] Vault deployed:', result.contractAddress);
+    
+    return result.contractAddress;
+  } catch (error) {
+    console.error('[ModeB] Deployment failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get user password for signing
+ */
+async function getUserPassword(): Promise<string> {
+  // TODO: Implement proper password request via OneKey UI
+  console.warn('[ModeB] Password request not implemented - using empty password');
+  return '';
 }
 
 /**
@@ -170,26 +235,39 @@ async function showAuthorizationModal(params: {
 /**
  * Deposit funds into Vault
  * 
- * TODO: Implement actual deposit transaction
+ * Uses ContractService to fund the vault contract
  */
 async function depositToVault(params: {
   vaultAddress: string;
   amount?: string;
   tokenSymbol?: string;
   chainId: string;
+  accountId: string;
 }): Promise<string> {
   console.log('[ModeB] Depositing to Vault:', params);
   
-  // TODO: Real implementation
-  // 1. Build deposit transaction
-  // 2. Sign with user's wallet
-  // 3. Broadcast transaction
-  // 4. Wait for confirmation
-  
-  // Mock transaction hash
-  const mockTxHash = `0x${Math.random().toString(16).slice(2)}`;
-  
-  return mockTxHash;
+  try {
+    // Use ContractService to fund vault
+    const { fundVault } = await import('../../services/contract');
+    
+    // Get user password
+    const password = await getUserPassword();
+
+    const result = await fundVault({
+      vaultAddress: params.vaultAddress,
+      ownerAccountId: params.accountId,
+      amount: params.amount || '0',
+      networkId: params.chainId,
+      password,
+    });
+
+    console.log('[ModeB] Vault funded:', result.txHash);
+    
+    return result.txHash;
+  } catch (error) {
+    console.error('[ModeB] Deposit failed:', error);
+    throw error;
+  }
 }
 
 /**
