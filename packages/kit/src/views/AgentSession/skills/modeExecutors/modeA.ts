@@ -120,7 +120,7 @@ async function generateSubWallet(chainId: string): Promise<string> {
 /**
  * Show authorization confirmation modal
  * 
- * TODO: Implement actual modal UI
+ * This creates a promise that will be resolved when the user confirms/rejects in the UI
  */
 async function showAuthorizationModal(params: {
   mode: EAgentAuthorizationMode;
@@ -132,11 +132,26 @@ async function showAuthorizationModal(params: {
   subWalletAddress?: string;
 }): Promise<boolean> {
   console.log('[ModeA] Showing authorization modal:', params);
-  
-  // TODO: Show actual modal and wait for user confirmation
-  // For now, auto-approve in demo
-  
-  return true;
+
+  // Dynamic import to avoid circular dependencies
+  const { requestAuthorizationFromUI } = await import('../authorizationBridge');
+
+  try {
+    const result = await requestAuthorizationFromUI({
+      agentId: 'agent-demo',
+      agentName: params.agentName,
+      chainId: params.chainId,
+      networkName: params.networkName,
+      requestedMode: params.mode,
+      requestedAmount: params.amount,
+      tokenSymbol: params.tokenSymbol,
+    });
+
+    return result.confirmed;
+  } catch (error) {
+    console.error('[ModeA] Modal error:', error);
+    return false;
+  }
 }
 
 /**
@@ -152,24 +167,22 @@ async function transferToSubWallet(params: {
   chainId: string;
 }): Promise<string> {
   console.log('[ModeA] Transferring funds:', params);
-  
+
   // TODO: Implement actual transaction
   // This should:
   // 1. Build transaction
   // 2. Sign with main wallet
   // 3. Broadcast transaction
   // 4. Wait for confirmation
-  
+
   // Mock transaction hash
   const mockTxHash = `0x${Math.random().toString(16).slice(2)}`;
-  
+
   return mockTxHash;
 }
 
 /**
  * Create authorization record
- * 
- * TODO: Implement actual storage logic
  */
 async function createAuthorization(params: {
   mode: EAgentAuthorizationMode;
@@ -186,11 +199,33 @@ async function createAuthorization(params: {
   rules: any;
 }): Promise<{ id: string }> {
   console.log('[ModeA] Creating authorization:', params);
-  
-  // TODO: Store authorization in app state (Jotai atom)
-  // For now, generate mock ID
-  
+
+  const { addAuthorization } = await import('../../services/storage');
+
   const authId = `auth-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  
+
+  const authorization: IAgentAuthorization = {
+    id: authId,
+    mode: params.mode,
+    status: params.status,
+    chainId: params.chainId,
+    networkName: params.networkName,
+    agentId: params.agentId,
+    agentName: params.agentName,
+    subWalletAddress: params.subWalletAddress,
+    allocatedAmount: params.allocatedAmount,
+    allocatedAmountUsd: params.allocatedAmount, // Simplified
+    spentAmount: params.spentAmount,
+    spentAmountUsd: params.spentAmount,
+    remainingAmount: params.remainingAmount,
+    remainingAmountUsd: params.remainingAmount,
+    tokenSymbol: params.tokenSymbol,
+    rules: params.rules,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  await addAuthorization(authorization);
+
   return { id: authId };
 }

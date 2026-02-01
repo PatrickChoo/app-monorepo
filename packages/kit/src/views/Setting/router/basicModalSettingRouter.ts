@@ -141,6 +141,21 @@ const DevAppUpdateModalSettingModal = LazyLoadPage(
     import('@onekeyhq/kit/src/views/Setting/pages/DevAppUpdateModalSettingModal'),
 );
 
+// AI Agent Authorization pages
+const AgentAuthorizationListPage = LazyLoadPage(
+  () =>
+    import(
+      '@onekeyhq/kit/src/views/AgentSession/pages/AuthorizationListPage'
+    ),
+);
+
+const AgentAuthorizationDetailPage = LazyLoadPage(
+  () =>
+    import(
+      '@onekeyhq/kit/src/views/AgentSession/pages/AuthorizationDetailPage'
+    ),
+);
+
 export const BasicModalSettingStack: IModalFlowNavigatorConfig<
   EModalSettingRoutes | EModalAddressBookRoutes,
   IModalSettingParamList & IModalAddressBookParamList
@@ -266,6 +281,15 @@ export const BasicModalSettingStack: IModalFlowNavigatorConfig<
   {
     name: EModalSettingRoutes.SettingOneKeyIdKeylessWallet,
     component: OneKeyIdKeylessWalletPage,
+  },
+  // AI Agent Authorization
+  {
+    name: EModalSettingRoutes.SettingAgentAuthorizationList,
+    component: AgentAuthorizationListPage,
+  },
+  {
+    name: EModalSettingRoutes.SettingAgentAuthorizationDetail,
+    component: AgentAuthorizationDetailPage,
   },
   ...(ModalAddressBookRouter as IModalFlowNavigatorConfig<
     EModalSettingRoutes | EModalAddressBookRoutes,

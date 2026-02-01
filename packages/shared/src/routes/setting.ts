@@ -32,6 +32,9 @@ export enum EModalSettingRoutes {
   SettingOneKeyIdPersonalInfo = 'SettingOneKeyIdPersonalInfo',
   SettingOneKeyIdSignInSecurity = 'SettingOneKeyIdSignInSecurity',
   SettingOneKeyIdKeylessWallet = 'SettingOneKeyIdKeylessWallet',
+  // AI Agent Authorization
+  SettingAgentAuthorizationList = 'SettingAgentAuthorizationList',
+  SettingAgentAuthorizationDetail = 'SettingAgentAuthorizationDetail',
 }
 
 export type IModalSettingParamList = {
@@ -72,4 +75,7 @@ export type IModalSettingParamList = {
   [EModalSettingRoutes.SettingOneKeyIdPersonalInfo]: undefined;
   [EModalSettingRoutes.SettingOneKeyIdSignInSecurity]: undefined;
   [EModalSettingRoutes.SettingOneKeyIdKeylessWallet]: undefined;
+  // AI Agent Authorization
+  [EModalSettingRoutes.SettingAgentAuthorizationList]: undefined;
+  [EModalSettingRoutes.SettingAgentAuthorizationDetail]: { authorizationId: string };
 };

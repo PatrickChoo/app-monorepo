@@ -133,8 +133,6 @@ async function getOrDeployVault(chainId: string): Promise<string> {
 
 /**
  * Show authorization confirmation modal
- * 
- * TODO: Implement actual modal UI
  */
 async function showAuthorizationModal(params: {
   mode: EAgentAuthorizationMode;
@@ -147,15 +145,26 @@ async function showAuthorizationModal(params: {
   rules?: any;
 }): Promise<boolean> {
   console.log('[ModeB] Showing authorization modal:', params);
-  
-  // TODO: Show actual modal
-  // Modal should display:
-  // - Vault contract address
-  // - Spending limits
-  // - Contract whitelist
-  // - Method whitelist
-  
-  return true;
+
+  const { requestAuthorizationFromUI } = await import('../authorizationBridge');
+
+  try {
+    const result = await requestAuthorizationFromUI({
+      agentId: 'agent-demo',
+      agentName: params.agentName,
+      chainId: params.chainId,
+      networkName: params.networkName,
+      requestedMode: params.mode,
+      requestedAmount: params.amount,
+      tokenSymbol: params.tokenSymbol,
+      rules: params.rules,
+    });
+
+    return result.confirmed;
+  } catch (error) {
+    console.error('[ModeB] Modal error:', error);
+    return false;
+  }
 }
 
 /**
@@ -206,8 +215,6 @@ async function setVaultRules(params: {
 
 /**
  * Create authorization record
- * 
- * TODO: Implement actual storage logic
  */
 async function createAuthorization(params: {
   mode: EAgentAuthorizationMode;
@@ -224,8 +231,34 @@ async function createAuthorization(params: {
   rules: any;
 }): Promise<{ id: string }> {
   console.log('[ModeB] Creating authorization:', params);
-  
+
+  const { addAuthorization } = await import('../../services/storage');
+  const { IAgentAuthorization } = await import('../../types');
+
   const authId = `auth-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  
+
+  const authorization: IAgentAuthorization = {
+    id: authId,
+    mode: params.mode,
+    status: params.status,
+    chainId: params.chainId,
+    networkName: params.networkName,
+    agentId: params.agentId,
+    agentName: params.agentName,
+    vaultContractAddress: params.vaultContractAddress,
+    allocatedAmount: params.allocatedAmount,
+    allocatedAmountUsd: params.allocatedAmount,
+    spentAmount: params.spentAmount,
+    spentAmountUsd: params.spentAmount,
+    remainingAmount: params.remainingAmount,
+    remainingAmountUsd: params.remainingAmount,
+    tokenSymbol: params.tokenSymbol,
+    rules: params.rules,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  await addAuthorization(authorization);
+
   return { id: authId };
 }

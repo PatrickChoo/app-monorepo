@@ -525,6 +525,18 @@ export const useSettingsConfig: () => ISettingsConfig = () => {
                     );
                   },
                 },
+            platformEnv.isWebDappMode
+              ? undefined
+              : {
+                  icon: 'RobotSolid',
+                  title: 'AI Agent Authorization',
+                  subtitle: 'Manage AI agent permissions',
+                  onPress: (navigation) => {
+                    navigation?.push(
+                      EModalSettingRoutes.SettingAgentAuthorizationList,
+                    );
+                  },
+                },
           ],
           [
             platformEnv.isExtension

@@ -171,8 +171,6 @@ async function generateSessionKey(): Promise<{
 
 /**
  * Show authorization confirmation modal
- * 
- * TODO: Implement actual modal UI
  */
 async function showAuthorizationModal(params: {
   mode: EAgentAuthorizationMode;
@@ -186,15 +184,29 @@ async function showAuthorizationModal(params: {
   expiresAt?: number;
 }): Promise<boolean> {
   console.log('[ModeC] Showing authorization modal:', params);
-  
-  // TODO: Show actual modal
-  // Modal should display:
-  // - Session key (truncated)
-  // - Allowed methods
-  // - Spending limit
-  // - Expiration time
-  
-  return true;
+
+  const { requestAuthorizationFromUI } = await import('../authorizationBridge');
+
+  try {
+    const result = await requestAuthorizationFromUI({
+      agentId: 'agent-demo',
+      agentName: params.agentName,
+      chainId: params.chainId,
+      networkName: params.networkName,
+      requestedMode: params.mode,
+      requestedAmount: params.amount,
+      tokenSymbol: params.tokenSymbol,
+      rules: {
+        ...params.rules,
+        expiresAt: params.expiresAt,
+      },
+    });
+
+    return result.confirmed;
+  } catch (error) {
+    console.error('[ModeC] Modal error:', error);
+    return false;
+  }
 }
 
 /**
@@ -214,16 +226,16 @@ async function registerSessionKey(params: {
   };
 }): Promise<string> {
   console.log('[ModeC] Registering session key:', params);
-  
+
   // TODO: Real implementation
   // 1. Build registerSessionKey transaction
   // 2. Sign with user's wallet
   // 3. Submit to bundler or broadcast directly
   // 4. Wait for confirmation
-  
+
   // Mock transaction hash
   const mockTxHash = `0x${Math.random().toString(16).slice(2)}`;
-  
+
   return mockTxHash;
 }
 
@@ -240,7 +252,7 @@ async function storeSessionKey(params: {
   agentId: string;
 }): Promise<void> {
   console.log('[ModeC] Storing session key (encrypted)');
-  
+
   // TODO: Real implementation
   // 1. Encrypt private key with user's master password or device key
   // 2. Store encrypted private key in secure storage
@@ -249,8 +261,6 @@ async function storeSessionKey(params: {
 
 /**
  * Create authorization record
- * 
- * TODO: Implement actual storage logic
  */
 async function createAuthorization(params: {
   mode: EAgentAuthorizationMode;
@@ -268,8 +278,37 @@ async function createAuthorization(params: {
   expiresAt?: number;
 }): Promise<{ id: string }> {
   console.log('[ModeC] Creating authorization:', params);
-  
+
+  const { addAuthorization } = await import('../../services/storage');
+  const { IAgentAuthorization } = await import('../../types');
+
   const authId = `auth-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  
+
+  const authorization: IAgentAuthorization = {
+    id: authId,
+    mode: params.mode,
+    status: params.status,
+    chainId: params.chainId,
+    networkName: params.networkName,
+    agentId: params.agentId,
+    agentName: params.agentName,
+    sessionKeyPublicKey: params.sessionKeyPublicKey,
+    allocatedAmount: params.allocatedAmount,
+    allocatedAmountUsd: params.allocatedAmount,
+    spentAmount: params.spentAmount,
+    spentAmountUsd: params.spentAmount,
+    remainingAmount: params.remainingAmount,
+    remainingAmountUsd: params.remainingAmount,
+    tokenSymbol: params.tokenSymbol,
+    rules: {
+      ...params.rules,
+      expiresAt: params.expiresAt,
+    },
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  await addAuthorization(authorization);
+
   return { id: authId };
 }

@@ -125,23 +125,159 @@ export async function executeWithAuthorization(
   authorizationId: string,
   params: IExecutionParams,
 ): Promise<{ success: boolean; txHash?: string; error?: string }> {
-  // TODO: Implement actual execution logic
-  // This will:
-  // 1. Load authorization by ID
-  // 2. Validate authorization is active and not expired
-  // 3. Validate execution params against authorization rules
-  // 4. Execute transaction based on mode
-  // 5. Update spent amount
-  // 6. Return transaction hash
-  
+  const { getAuthorizationById, updateAuthorization } = await import(
+    '../services/storage'
+  );
+
   console.log(`[AgentSession] Executing with authorization: ${authorizationId}`);
   console.log(`[AgentSession] Params:`, params);
-  
-  // Placeholder implementation
-  return {
-    success: true,
-    txHash: `0x${Math.random().toString(16).slice(2)}`,
-  };
+
+  try {
+    // 1. Load authorization by ID
+    const authorization = await getAuthorizationById(authorizationId);
+
+    if (!authorization) {
+      return {
+        success: false,
+        error: `Authorization not found: ${authorizationId}`,
+      };
+    }
+
+    // 2. Validate authorization is active and not expired
+    if (authorization.status !== 'Active') {
+      return {
+        success: false,
+        error: `Authorization is not active: ${authorization.status}`,
+      };
+    }
+
+    const now = Date.now();
+    if (authorization.rules.expiresAt && authorization.rules.expiresAt < now) {
+      await updateAuthorization(authorizationId, { status: 'Expired' });
+      return {
+        success: false,
+        error: 'Authorization has expired',
+      };
+    }
+
+    // 3. Validate execution params against authorization rules
+    const amountUsd = parseFloat(params.amount) || 0; // Simplified - should convert to USD
+    const spentUsd = parseFloat(authorization.spentAmountUsd || '0');
+    const limitUsd = authorization.rules.spendingLimitUsd || Infinity;
+
+    if (spentUsd + amountUsd > limitUsd) {
+      return {
+        success: false,
+        error: `Spending limit exceeded. Limit: ${limitUsd}, Spent: ${spentUsd}, Requested: ${amountUsd}`,
+      };
+    }
+
+    // 4. Execute transaction based on mode
+    console.log(`[AgentSession] Executing with mode: ${authorization.mode}`);
+
+    let txHash: string;
+
+    switch (authorization.mode) {
+      case 'IsolatedSubWallet':
+        // Use sub-wallet to execute transaction
+        txHash = await executeWithSubWallet(authorization, params);
+        break;
+
+      case 'VaultContract':
+        // Call vault contract to execute transaction
+        txHash = await executeWithVaultContract(authorization, params);
+        break;
+
+      case 'SessionKey':
+        // Sign transaction with session key
+        txHash = await executeWithSessionKey(authorization, params);
+        break;
+
+      default:
+        throw new Error(`Unsupported mode: ${authorization.mode}`);
+    }
+
+    // 5. Update spent amount
+    const newSpentUsd = (spentUsd + amountUsd).toString();
+    const newRemainingUsd = (limitUsd - (spentUsd + amountUsd)).toString();
+
+    await updateAuthorization(authorizationId, {
+      spentAmountUsd: newSpentUsd,
+      remainingAmountUsd: newRemainingUsd,
+    });
+
+    console.log(`[AgentSession] Transaction executed: ${txHash}`);
+
+    // 6. Return transaction hash
+    return {
+      success: true,
+      txHash,
+    };
+  } catch (error) {
+    console.error('[AgentSession] Execution failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Execute transaction using sub-wallet (Mode A)
+ */
+async function executeWithSubWallet(
+  authorization: IAgentAuthorization,
+  params: IExecutionParams,
+): Promise<string> {
+  console.log('[AgentSession] Executing with sub-wallet:', authorization.subWalletAddress);
+
+  // TODO: Implement actual transaction logic
+  // This should:
+  // 1. Load sub-wallet private key
+  // 2. Build transaction based on params
+  // 3. Sign with sub-wallet
+  // 4. Broadcast transaction
+
+  // Mock implementation
+  return `0x${Math.random().toString(16).slice(2)}`;
+}
+
+/**
+ * Execute transaction using vault contract (Mode B)
+ */
+async function executeWithVaultContract(
+  authorization: IAgentAuthorization,
+  params: IExecutionParams,
+): Promise<string> {
+  console.log('[AgentSession] Executing with vault contract:', authorization.vaultContractAddress);
+
+  // TODO: Implement actual contract call
+  // This should:
+  // 1. Build contract call data
+  // 2. Call vault contract's execute method
+  // 3. Wait for transaction confirmation
+
+  // Mock implementation
+  return `0x${Math.random().toString(16).slice(2)}`;
+}
+
+/**
+ * Execute transaction using session key (Mode C)
+ */
+async function executeWithSessionKey(
+  authorization: IAgentAuthorization,
+  params: IExecutionParams,
+): Promise<string> {
+  console.log('[AgentSession] Executing with session key:', authorization.sessionKeyPublicKey);
+
+  // TODO: Implement actual AA wallet + session key logic
+  // This should:
+  // 1. Build UserOperation
+  // 2. Sign with session key
+  // 3. Submit to bundler
+
+  // Mock implementation
+  return `0x${Math.random().toString(16).slice(2)}`;
 }
 
 /**

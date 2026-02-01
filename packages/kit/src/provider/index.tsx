@@ -20,6 +20,7 @@ import { GlobalJotaiReady } from '../components/GlobalJotaiReady';
 import SupabaseAuthProvider from '../components/OneKeyAuth/supabase/SupabaseAuthProvider';
 import PasswordVerifyPromptMount from '../components/Password/container/PasswordVerifyPromptMount';
 import { SystemLocaleTracker } from '../components/SystemLocaleTracker';
+import { AgentSessionProvider } from '../views/AgentSession';
 
 import { Container } from './Container';
 import { ColdStartByNotification } from './Container/ColdStartByNotification';
@@ -68,25 +69,27 @@ export function KitProvider(props: any = {}) {
   const content = (
     <SafeAreaProvider>
       <GlobalJotaiReady>
-        <SupabaseAuthProvider>
-          <KeyboardProvider>
-            <GestureHandlerRootView style={flexStyle}>
-              <ThemeProvider>
-                <NetworkReachabilityTracker />
-                <SplashProvider>
-                  <Container />
-                </SplashProvider>
-                <PasswordVerifyPromptMount />
-                <WebViewWebEmbedProvider />
-                <LastActivityTracker />
-                <SystemLocaleTracker />
-                <StateActiveContainer />
-                <SyncHomeAccountToDappAccountProvider />
-                <HardwareServiceProvider />
-              </ThemeProvider>
-            </GestureHandlerRootView>
-          </KeyboardProvider>
-        </SupabaseAuthProvider>
+        <AgentSessionProvider>
+          <SupabaseAuthProvider>
+            <KeyboardProvider>
+              <GestureHandlerRootView style={flexStyle}>
+                <ThemeProvider>
+                  <NetworkReachabilityTracker />
+                  <SplashProvider>
+                    <Container />
+                  </SplashProvider>
+                  <PasswordVerifyPromptMount />
+                  <WebViewWebEmbedProvider />
+                  <LastActivityTracker />
+                  <SystemLocaleTracker />
+                  <StateActiveContainer />
+                  <SyncHomeAccountToDappAccountProvider />
+                  <HardwareServiceProvider />
+                </ThemeProvider>
+              </GestureHandlerRootView>
+            </KeyboardProvider>
+          </SupabaseAuthProvider>
+        </AgentSessionProvider>
       </GlobalJotaiReady>
     </SafeAreaProvider>
   );
