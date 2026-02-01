@@ -9,10 +9,13 @@
  * Works on: EVM chains with smart contract support
  */
 
+import { ethers } from 'ethers';
+
 import {
   EAgentAuthorizationMode,
   EAgentAuthorizationStatus,
   type IAgentAuthorizationRequest,
+  type IAgentAuthorization,
 } from '../../types';
 import type { IAuthorizationResult } from '../types';
 
@@ -37,8 +40,20 @@ export async function executeModeB(
   console.log('[ModeB] Request:', request);
 
   try {
+    // Validate request has required fields
+    if (!request.accountId) {
+      throw new Error('Account ID is required for Mode B');
+    }
+    if (!request.requestedAmount) {
+      throw new Error('Requested amount is required for Mode B');
+    }
+
     // 1. Get or deploy Vault contract
-    const vaultAddress = await getOrDeployVault(request.chainId);
+    const vaultAddress = await getOrDeployVault({
+      chainId: request.chainId,
+      accountId: request.accountId,
+      dailyLimit: request.rules?.dailyLimitWei || ethers.parseEther('1').toString(),
+    });
     console.log('[ModeB] Vault contract:', vaultAddress);
 
     // 2. Show confirmation modal to user
@@ -63,6 +78,7 @@ export async function executeModeB(
       amount: request.requestedAmount,
       tokenSymbol: request.tokenSymbol,
       chainId: request.chainId,
+      accountId: request.accountId,
     });
     console.log('[ModeB] Deposit tx:', depositTxHash);
 
@@ -311,7 +327,6 @@ async function createAuthorization(params: {
   console.log('[ModeB] Creating authorization:', params);
 
   const { addAuthorization } = await import('../../services/storage');
-  const { IAgentAuthorization } = await import('../../types');
 
   const authId = `auth-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 

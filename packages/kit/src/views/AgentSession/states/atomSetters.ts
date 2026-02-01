@@ -13,9 +13,11 @@ let pendingRequestSetter: ((value: IAgentAuthorizationRequest | null) => void) |
 /**
  * Register the pending request setter
  * This is called from the Provider on mount
+ * 
+ * Pass null to unregister (cleanup on unmount)
  */
 export function registerPendingRequestSetter(
-  setter: (value: IAgentAuthorizationRequest | null) => void,
+  setter: ((value: IAgentAuthorizationRequest | null) => void) | null,
 ): void {
   pendingRequestSetter = setter;
 }

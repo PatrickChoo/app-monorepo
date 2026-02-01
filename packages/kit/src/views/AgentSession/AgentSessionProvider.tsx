@@ -27,6 +27,11 @@ function AgentSessionProviderInner({ children }: PropsWithChildren) {
   // Register the setter for use outside React components
   useEffect(() => {
     registerPendingRequestSetter(setPendingRequest);
+    
+    // Cleanup on unmount to prevent memory leaks
+    return () => {
+      registerPendingRequestSetter(null);
+    };
   }, [setPendingRequest]);
 
   // Handle modal confirmation

@@ -2,83 +2,15 @@
  * Agent Session Contract Service
  * 
  * Handles smart contract operations for Agent Sessions (Mode B: Vault Contracts)
- * 
- * NOTE: This is a skeleton implementation. Full implementation requires:
- * - Vault contract Solidity code compilation
- * - Contract ABI definitions
- * - Bytecode deployment logic
  */
+
+import { ethers } from 'ethers';
 
 import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
 import vaultFactory from '@onekeyhq/kit-bg/src/vaults/factory';
 import type { IUnsignedTxPro } from '@onekeyhq/kit-bg/src/vaults/types';
 
-/**
- * Vault Contract ABI (simplified skeleton)
- * 
- * A Vault contract allows:
- * - Owner to execute arbitrary calls
- * - Owner to receive funds
- * - Access control (only owner can execute)
- */
-const VAULT_CONTRACT_ABI = [
-  {
-    name: 'execute',
-    type: 'function',
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'value', type: 'uint256' },
-      { name: 'data', type: 'bytes' },
-    ],
-    outputs: [{ name: 'success', type: 'bool' }],
-    stateMutability: 'nonpayable',
-  },
-  {
-    name: 'owner',
-    type: 'function',
-    inputs: [],
-    outputs: [{ name: '', type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    name: 'receive',
-    type: 'receive',
-    stateMutability: 'payable',
-  },
-];
-
-/**
- * Vault contract bytecode (placeholder)
- * 
- * TODO: Compile actual Solidity contract:
- * 
- * ```solidity
- * contract AgentVault {
- *   address public owner;
- * 
- *   constructor() {
- *     owner = msg.sender;
- *   }
- * 
- *   modifier onlyOwner() {
- *     require(msg.sender == owner, "Not owner");
- *     _;
- *   }
- * 
- *   function execute(
- *     address to,
- *     uint256 value,
- *     bytes calldata data
- *   ) external onlyOwner returns (bool) {
- *     (bool success, ) = to.call{value: value}(data);
- *     return success;
- *   }
- * 
- *   receive() external payable {}
- * }
- * ```
- */
-const VAULT_CONTRACT_BYTECODE = '0x'; // TODO: Add compiled bytecode
+import { AGENT_VAULT_ABI, AGENT_VAULT_BYTECODE } from '../contracts/vaultABI';
 
 interface VaultDeploymentResult {
   contractAddress: string;
@@ -97,35 +29,30 @@ interface VaultExecutionResult {
  * Deploys a smart contract that acts as a vault for the agent.
  * The owner (main account) has full control over the vault.
  * 
- * @throws Error - Not fully implemented, needs contract bytecode
+ * @param params.ownerAccountId - Account ID deploying the contract
+ * @param params.networkId - Network to deploy on
+ * @param params.password - Password to unlock account for signing
+ * @param params.dailyLimitWei - Daily spending limit in wei (default: 1 ETH = 1e18)
+ * @param params.initialFunding - Optional initial ETH to send to vault
+ * @returns Deployment result with contract address and tx hash
  */
 export async function deployVaultContract(params: {
   ownerAccountId: string;
   networkId: string;
   password: string;
-  initialFunding?: string; // Optional initial ETH to send to vault
+  dailyLimitWei?: string;
+  initialFunding?: string;
 }): Promise<VaultDeploymentResult> {
-  const { ownerAccountId, networkId, password, initialFunding } = params;
+  const { ownerAccountId, networkId, password, dailyLimitWei, initialFunding } = params;
 
   console.log('[ContractService] Deploying Vault contract...', {
     ownerAccountId,
     networkId,
+    dailyLimitWei,
     initialFunding,
   });
 
   try {
-    // TODO: Full implementation requires:
-    // 1. Compile Vault.sol contract to get bytecode
-    // 2. Encode constructor parameters (owner address)
-    // 3. Build deployment transaction
-    // 4. Sign and broadcast
-
-    if (VAULT_CONTRACT_BYTECODE === '0x') {
-      throw new Error(
-        'Vault contract bytecode not available. Please compile the Solidity contract first.',
-      );
-    }
-
     // Get owner account
     const ownerAccount = await backgroundApiProxy.serviceAccount.getAccount({
       accountId: ownerAccountId,
@@ -142,14 +69,40 @@ export async function deployVaultContract(params: {
       accountId: ownerAccountId,
     });
 
+    // Get current nonce to calculate contract address
+    const nonceHex = await vault.buildRpcCall({
+      method: 'eth_getTransactionCount',
+      params: [ownerAccount.address, 'latest'],
+    });
+    const nonce = parseInt(nonceHex, 16);
+
+    // Calculate contract address (before deployment)
+    const predictedAddress = calculateContractAddress(ownerAccount.address, nonce);
+
+    // Encode constructor parameters (dailyLimit)
+    const contractInterface = new ethers.Interface(AGENT_VAULT_ABI);
+    const defaultDailyLimit = ethers.parseEther('1').toString(); // 1 ETH default
+    const encodedConstructor = contractInterface.encodeDeploy([
+      dailyLimitWei || defaultDailyLimit,
+    ]);
+
+    // Combine bytecode + constructor params
+    const deploymentData = AGENT_VAULT_BYTECODE + encodedConstructor.slice(2); // Remove '0x' from constructor params
+
     // Build deployment transaction
-    // NOTE: This is a skeleton - actual encoding depends on chain
     const encodedTx = {
       from: ownerAccount.address,
       to: '', // Empty for contract deployment
       value: initialFunding || '0',
-      data: VAULT_CONTRACT_BYTECODE, // Bytecode + constructor params
+      data: deploymentData,
     };
+
+    console.log('[ContractService] Building deployment transaction...', {
+      from: ownerAccount.address,
+      nonce,
+      predictedAddress,
+      dataLength: deploymentData.length,
+    });
 
     const unsignedTx = await vault.buildUnsignedTx({ encodedTx });
 
@@ -167,17 +120,14 @@ export async function deployVaultContract(params: {
       accountAddress: ownerAccount.address,
     });
 
-    // Calculate contract address (depends on deployer address + nonce)
-    // TODO: Implement proper contract address calculation
-    const contractAddress = '0x0000000000000000000000000000000000000000';
-
-    console.log('[ContractService] Vault deployed:', {
-      contractAddress,
+    console.log('[ContractService] Vault deployed successfully:', {
+      contractAddress: predictedAddress,
       txHash: result.txid,
+      owner: ownerAccount.address,
     });
 
     return {
-      contractAddress,
+      contractAddress: predictedAddress,
       txHash: result.txid,
       owner: ownerAccount.address,
     };
@@ -193,16 +143,23 @@ export async function deployVaultContract(params: {
  * Calls the vault's execute() function to perform an action
  * on behalf of the vault contract.
  * 
- * @throws Error - Not fully implemented, needs ABI encoding
+ * @param params.vaultAddress - Address of the vault contract
+ * @param params.ownerAccountId - Account ID of the vault owner
+ * @param params.targetAddress - Target address for the execution
+ * @param params.amount - Amount of ETH to send (in wei)
+ * @param params.networkId - Network ID
+ * @param params.password - Password to unlock account
+ * @param params.data - Optional calldata for contract interaction
+ * @returns Execution result with tx hash and success status
  */
 export async function executeViaVault(params: {
   vaultAddress: string;
   ownerAccountId: string;
   targetAddress: string;
-  amount: string; // In base unit (wei)
+  amount: string;
   networkId: string;
   password: string;
-  data?: string; // Optional calldata for contract interaction
+  data?: string;
 }): Promise<VaultExecutionResult> {
   const { vaultAddress, ownerAccountId, targetAddress, amount, networkId, password, data } = params;
 
@@ -211,14 +168,10 @@ export async function executeViaVault(params: {
     targetAddress,
     amount,
     networkId,
+    hasData: !!data,
   });
 
   try {
-    // TODO: Full implementation requires:
-    // 1. Encode execute(address,uint256,bytes) function call
-    // 2. Build transaction to vault contract
-    // 3. Sign and broadcast
-
     // Get owner account
     const ownerAccount = await backgroundApiProxy.serviceAccount.getAccount({
       accountId: ownerAccountId,
@@ -235,11 +188,15 @@ export async function executeViaVault(params: {
       accountId: ownerAccountId,
     });
 
-    // Encode function call: execute(address to, uint256 value, bytes data)
-    // TODO: Implement proper ABI encoding
-    // This requires web3.js or ethers.js utils
+    // Encode execute() function call
     const calldata = data || '0x';
     const encodedFunctionCall = encodeExecuteCall(targetAddress, amount, calldata);
+
+    console.log('[ContractService] Encoded function call:', {
+      functionCallLength: encodedFunctionCall.length,
+      targetAddress,
+      amount,
+    });
 
     // Build transaction to vault contract
     const encodedTx = {
@@ -265,7 +222,12 @@ export async function executeViaVault(params: {
       accountAddress: ownerAccount.address,
     });
 
-    console.log('[ContractService] Vault execution successful:', result.txid);
+    console.log('[ContractService] Vault execution successful:', {
+      txHash: result.txid,
+      from: ownerAccount.address,
+      vault: vaultAddress,
+      target: targetAddress,
+    });
 
     return {
       txHash: result.txid,
@@ -273,28 +235,81 @@ export async function executeViaVault(params: {
     };
   } catch (error) {
     console.error('[ContractService] Vault execution failed:', error);
-    throw error;
+    return {
+      txHash: '',
+      success: false,
+    };
   }
 }
 
 /**
  * Encode execute() function call
  * 
- * TODO: Implement proper ABI encoding using web3/ethers utils
- * 
  * Function signature: execute(address,uint256,bytes)
- * Selector: keccak256("execute(address,uint256,bytes)").slice(0, 4)
+ * Encodes the function call using ethers.js Interface
+ * 
+ * @param to - Target address for the call
+ * @param value - Amount of ETH to send (in wei)
+ * @param data - Calldata to send to target
+ * @returns Encoded function call data
  */
 function encodeExecuteCall(to: string, value: string, data: string): string {
-  // Placeholder - needs proper ABI encoding
-  console.warn('[ContractService] ABI encoding not implemented');
-  
-  // This should encode:
-  // 0x + function_selector + encoded_params
-  // function_selector = first 4 bytes of keccak256("execute(address,uint256,bytes)")
-  // encoded_params = ABI-encoded (to, value, data)
-  
-  return '0x'; // TODO: Implement
+  try {
+    const contractInterface = new ethers.Interface(AGENT_VAULT_ABI);
+    
+    // Encode the execute function call
+    const encodedData = contractInterface.encodeFunctionData('execute', [
+      to,
+      value,
+      data || '0x',
+    ]);
+    
+    console.log('[ContractService] Encoded execute call:', {
+      to,
+      value,
+      data,
+      encodedData,
+    });
+    
+    return encodedData;
+  } catch (error) {
+    console.error('[ContractService] Failed to encode execute call:', error);
+    throw new Error(`Failed to encode execute call: ${error.message}`);
+  }
+}
+
+/**
+ * Calculate contract address for deployment
+ * 
+ * Uses standard CREATE opcode address calculation:
+ * address = keccak256(rlp([sender_address, sender_nonce]))[12:]
+ * 
+ * @param deployerAddress - Address deploying the contract
+ * @param nonce - Nonce of the deployer at deployment time
+ * @returns Predicted contract address
+ */
+export function calculateContractAddress(
+  deployerAddress: string,
+  nonce: number,
+): string {
+  try {
+    // ethers.js provides a utility for this
+    const contractAddress = ethers.getCreateAddress({
+      from: deployerAddress,
+      nonce,
+    });
+    
+    console.log('[ContractService] Calculated contract address:', {
+      deployerAddress,
+      nonce,
+      contractAddress,
+    });
+    
+    return contractAddress;
+  } catch (error) {
+    console.error('[ContractService] Failed to calculate contract address:', error);
+    throw new Error(`Failed to calculate contract address: ${error.message}`);
+  }
 }
 
 /**
@@ -303,22 +318,81 @@ function encodeExecuteCall(to: string, value: string, data: string): string {
 export async function getVaultInfo(params: {
   vaultAddress: string;
   networkId: string;
+  accountId: string;
 }): Promise<{
   owner: string;
   balance: string;
+  dailyLimit: string;
+  dailySpent: string;
 }> {
-  const { vaultAddress, networkId } = params;
+  const { vaultAddress, networkId, accountId } = params;
 
-  // TODO: Implement contract read calls
-  // 1. Call owner() function
-  // 2. Get contract balance via RPC
+  console.log('[ContractService] Getting vault info:', { vaultAddress, networkId });
 
-  console.warn('[ContractService] getVaultInfo not implemented');
+  try {
+    // Get vault instance for RPC calls
+    const vault = await vaultFactory.getVault({
+      networkId,
+      accountId,
+    });
 
-  return {
-    owner: '0x0000000000000000000000000000000000000000',
-    balance: '0',
-  };
+    const contractInterface = new ethers.Interface(AGENT_VAULT_ABI);
+
+    // Call owner() function
+    const ownerCallData = contractInterface.encodeFunctionData('owner', []);
+    const ownerResult = await vault.buildRpcCall({
+      method: 'eth_call',
+      params: [
+        {
+          to: vaultAddress,
+          data: ownerCallData,
+        },
+        'latest',
+      ],
+    });
+    const [owner] = contractInterface.decodeFunctionResult('owner', ownerResult);
+
+    // Get contract balance
+    const balanceResult = await vault.buildRpcCall({
+      method: 'eth_getBalance',
+      params: [vaultAddress, 'latest'],
+    });
+    const balance = balanceResult || '0x0';
+
+    // Get spending status
+    const spendingStatusCallData = contractInterface.encodeFunctionData('getSpendingStatus', []);
+    const spendingStatusResult = await vault.buildRpcCall({
+      method: 'eth_call',
+      params: [
+        {
+          to: vaultAddress,
+          data: spendingStatusCallData,
+        },
+        'latest',
+      ],
+    });
+    const [dailyLimit, dailySpent] = contractInterface.decodeFunctionResult(
+      'getSpendingStatus',
+      spendingStatusResult,
+    );
+
+    console.log('[ContractService] Vault info retrieved:', {
+      owner,
+      balance,
+      dailyLimit: dailyLimit.toString(),
+      dailySpent: dailySpent.toString(),
+    });
+
+    return {
+      owner: owner.toString(),
+      balance: ethers.toBigInt(balance).toString(),
+      dailyLimit: dailyLimit.toString(),
+      dailySpent: dailySpent.toString(),
+    };
+  } catch (error) {
+    console.error('[ContractService] Failed to get vault info:', error);
+    throw error;
+  }
 }
 
 /**

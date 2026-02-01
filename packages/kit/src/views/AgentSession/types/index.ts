@@ -57,6 +57,12 @@ export interface IAgentAuthorization {
   updatedAt: number;
   // For Mode A: sub-wallet address
   subWalletAddress?: string;
+  // For Mode A: sub-wallet account ID for backend tracking
+  subWalletAccountId?: string;
+  // For Mode A: BIP44 derivation path of the sub-wallet
+  subWalletPath?: string;
+  // For Mode A/B: Transaction hash of funding operation
+  fundingTxHash?: string;
   // For Mode B: vault contract address
   vaultContractAddress?: string;
   // For Mode C: session key public key

@@ -7,6 +7,7 @@ import {
   SizableText,
   Spinner,
   Switch,
+  Toast,
   XStack,
   YStack,
 } from '@onekeyhq/components';
@@ -46,8 +47,36 @@ export function AuthorizationModal({
     try {
       setIsProcessing(true);
       await onConfirm({ useBiometric, selectedMode });
+      
+      Toast.success({
+        title: 'Authorization Successful',
+        message: `AI agent authorized with ${selectedMode} mode`,
+      });
     } catch (error) {
       console.error('Authorization confirmation failed:', error);
+      
+      // User-friendly error messages
+      let errorMessage = 'Failed to authorize agent. Please try again.';
+      
+      if (error instanceof Error) {
+        // Handle specific error cases
+        if (error.message.includes('password')) {
+          errorMessage = 'Invalid password. Please check and try again.';
+        } else if (error.message.includes('network')) {
+          errorMessage = 'Network error. Please check your connection.';
+        } else if (error.message.includes('insufficient')) {
+          errorMessage = 'Insufficient balance to complete authorization.';
+        } else if (error.message.includes('bytecode')) {
+          errorMessage = 'Mode B (Vault Contract) is not yet fully implemented.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      Toast.error({
+        title: 'Authorization Failed',
+        message: errorMessage,
+      });
     } finally {
       setIsProcessing(false);
     }
