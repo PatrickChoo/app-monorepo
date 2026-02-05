@@ -8,6 +8,8 @@
  * 4. Create authorization record with audit logs
  */
 
+import simpleDb from '@onekeyhq/kit-bg/src/dbs/simple/simpleDb';
+
 import {
   EAgentAuthorizationMode,
   EAgentAuthorizationStatus,
@@ -113,6 +115,21 @@ export async function createAgentAuthorization(
       isNew: subAccount.isNewAccount,
     });
     
+    // Register to agent account registry (if new account)
+    if (subAccount.isNewAccount) {
+      const { registerAgentAccount } = await import('./agentAccountRegistry');
+      await registerAgentAccount({
+        accountId: subAccount.accountId,
+        address: subAccount.address,
+        derivationIndex: subAccount.derivationIndex,
+        derivationPath: subAccount.path,
+        agentId: request.agentId,
+        agentName: request.agentName,
+        authorizationId: 'pending',  // Will be updated later
+        privateKeyExported: false,    // Not exported yet
+      });
+    }
+    
     // Log: Account derivation
     await addAuditLog({
       authorizationId: 'pending',
@@ -163,6 +180,16 @@ export async function createAgentAuthorization(
         password,
       });
       console.log('[Authorization] Private key exported');
+      
+      // Update account name to reflect private key export
+      const { updateAgentAccountName } = await import('./wallet');
+      await updateAgentAccountName({
+        accountId: subAccount.accountId,
+        agentName: request.agentName,
+        derivationIndex: subAccount.derivationIndex,
+        privateKeyExported: true,  // ← Changed
+        status: 'active',
+      });
       
       // Log: Private key export (sensitive operation)
       await addAuditLog({
@@ -223,6 +250,16 @@ export async function createAgentAuthorization(
     
     await addAuthorization(authorization);
     
+    // Update registry with authorization ID
+    const { updateAgentAccountStatus } = await import('./agentAccountRegistry');
+    if (subAccount.isNewAccount) {
+      // Update the authorizationId in registry
+      await simpleDb.agentAccountRegistry.updateAuthorizationId(
+        subAccount.accountId,
+        authId,
+      );
+    }
+    
     console.log('[Authorization] Authorization created:', authId);
     
     // Log: Authorization created
@@ -282,29 +319,71 @@ export async function createAgentAuthorization(
  * 
  * Actions:
  * 1. Mark authorization as revoked
- * 2. Transfer remaining funds back to user
- * 3. Log audit trail
+ * 2. Update account name to show revoked status
+ * 3. Transfer remaining funds back to user (optional)
+ * 4. Log audit trail
  */
 export async function revokeAgentAuthorization(
   authorizationId: string,
-  password: string,
+  password?: string,
 ): Promise<void> {
   console.log('[Authorization] Revoking authorization:', authorizationId);
   
-  // TODO: Implement revocation
-  // 1. Get authorization record
-  // 2. Check remaining balance
-  // 3. Transfer back to funding account
-  // 4. Update status to Revoked
-  // 5. Log audit
-  
-  await addAuditLog({
-    authorizationId,
-    agentId: 'unknown',
-    action: 'revoke-authorization',
-    details: {
-      revokedBy: 'user',
-    },
-    timestamp: Date.now(),
-  });
+  try {
+    // 1. Get authorization record
+    const { getAuthorizationById, updateAuthorization } = await import('./storage');
+    const authorization = await getAuthorizationById(authorizationId);
+    
+    if (!authorization) {
+      throw new Error('Authorization not found');
+    }
+    
+    // 2. Update authorization status
+    await updateAuthorization(authorizationId, {
+      status: EAgentAuthorizationStatus.Revoked,
+      updatedAt: Date.now(),
+    });
+    
+    // 3. Update account name to show revoked status
+    if (authorization.subWalletAccountId) {
+      const { updateAgentAccountName } = await import('./wallet');
+      await updateAgentAccountName({
+        accountId: authorization.subWalletAccountId,
+        agentName: authorization.agentName,
+        derivationIndex: authorization.derivationIndex || 0,
+        privateKeyExported: authorization.privateKeyExported || false,
+        status: 'revoked',  // ← Changed
+      });
+    }
+    
+    // 4. Update registry status
+    if (authorization.subWalletAccountId) {
+      const { updateAgentAccountStatus } = await import('./agentAccountRegistry');
+      await updateAgentAccountStatus(
+        authorization.subWalletAccountId,
+        'revoked',
+      );
+    }
+    
+    // 5. Log audit
+    await addAuditLog({
+      authorizationId,
+      agentId: authorization.agentId,
+      action: 'revoke-authorization',
+      details: {
+        revokedBy: 'user',
+        previousStatus: authorization.status,
+      },
+      timestamp: Date.now(),
+    });
+    
+    console.log('[Authorization] Authorization revoked successfully');
+    
+    // TODO: Transfer remaining funds back to user (if password provided)
+    // This requires checking balance and creating transfer transaction
+    
+  } catch (error) {
+    console.error('[Authorization] Revocation failed:', error);
+    throw error;
+  }
 }

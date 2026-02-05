@@ -14,31 +14,65 @@ import { getNetworkIdImpl } from '@onekeyhq/shared/src/engine/engineConsts';
 /**
  * Derive a new sub-account for the agent
  * 
- * This creates a new account using HD derivation.
- * The account will be added to the wallet but won't be visible in the main UI.
+ * This creates a new account using HD derivation in the agent-dedicated range (10,000+).
+ * The account name will be marked with agent info and private key export status.
  */
 export async function deriveSubAccount(params: {
   walletId: string;
   networkId: string;
+  agentId: string;
+  agentName: string;
+  reuseIfExists?: boolean;
 }): Promise<{
   address: string;
   accountId: string;
   path: string;
+  derivationIndex: number;
+  isNewAccount: boolean;
 }> {
-  const { walletId, networkId } = params;
+  const { walletId, networkId, agentId, agentName, reuseIfExists = true } = params;
 
-  console.log('[WalletService] Deriving sub-account:', { walletId, networkId });
+  console.log('[WalletService] Deriving sub-account:', { walletId, networkId, agentId, agentName });
 
   try {
-    // Get the next available index for this wallet
-    const nextIndex = await getNextAccountIndex(walletId, networkId);
+    // 1. Check if this agent already has an account (if reuse is enabled)
+    if (reuseIfExists) {
+      const { getAgentAccountByAgent } = await import('./agentAccountRegistry');
+      const existing = await getAgentAccountByAgent(agentId, networkId);
+      
+      if (existing) {
+        console.log('[WalletService] Reusing existing agent account:', existing.address);
+        return {
+          address: existing.address,
+          accountId: existing.accountId,
+          path: existing.derivationPath,
+          derivationIndex: existing.derivationIndex,
+          isNewAccount: false,
+        };
+      }
+    }
 
-    // Derive the account using OneKey's account service
+    // 2. Get next available agent derivation index
+    const { getNextAgentDerivationIndex } = await import('./agentAccountRegistry');
+    const nextIndex = await getNextAgentDerivationIndex(networkId);
+    
+    console.log('[WalletService] Next agent index:', nextIndex);
+
+    // 3. Generate account name with status markers
+    const { generateAgentAccountName } = await import('./agentAccountRegistry');
+    const accountName = generateAgentAccountName({
+      agentName,
+      derivationIndex: nextIndex,
+      privateKeyExported: false,  // Not exported yet
+      status: 'active',
+    });
+
+    // 4. Derive the account using OneKey's account service
     const account = await backgroundApiProxy.serviceAccount.addHDAccount({
       walletId,
       networkId,
       indexes: [nextIndex],
-      names: [`Agent Wallet #${nextIndex}`],
+      names: [accountName],  // Use generated name
     });
 
     if (!account || account.length === 0) {
@@ -51,12 +85,15 @@ export async function deriveSubAccount(params: {
       address: newAccount.address,
       accountId: newAccount.id,
       path: newAccount.path,
+      name: accountName,
     });
 
     return {
       address: newAccount.address,
       accountId: newAccount.id,
-      path: newAccount.path || `m/44'/60'/0'/0/${nextIndex}`, // Default ETH path
+      path: newAccount.path || `m/44'/60'/0'/0/${nextIndex}`,
+      derivationIndex: nextIndex,
+      isNewAccount: true,
     };
   } catch (error) {
     console.error('[WalletService] Failed to derive sub-account:', error);
@@ -67,40 +104,34 @@ export async function deriveSubAccount(params: {
 }
 
 /**
- * Get the next available account index for a wallet
+ * Update agent account name
+ * 
+ * Called when:
+ * - Private key is exported
+ * - Authorization is revoked
+ * - Status changes
  */
-async function getNextAccountIndex(
-  walletId: string,
-  networkId: string,
-): Promise<number> {
+export async function updateAgentAccountName(params: {
+  accountId: string;
+  agentName: string;
+  derivationIndex: number;
+  privateKeyExported: boolean;
+  status: 'active' | 'revoked' | 'one-time-used';
+}): Promise<void> {
   try {
-    // Get all accounts for this wallet and network
-    const accounts =
-      await backgroundApiProxy.serviceAccount.getAccountsOfWallet({
-        walletId,
-        networkId,
-      });
-
-    // Find the maximum index
-    let maxIndex = -1;
-    for (const account of accounts) {
-      if (account.path) {
-        // Extract index from path (e.g., m/44'/60'/0'/0/5 → 5)
-        const match = account.path.match(/\/(\d+)$/);
-        if (match) {
-          const index = parseInt(match[1], 10);
-          if (index > maxIndex) {
-            maxIndex = index;
-          }
-        }
-      }
-    }
-
-    // Return next index
-    return maxIndex + 1;
+    const { generateAgentAccountName } = await import('./agentAccountRegistry');
+    const newName = generateAgentAccountName(params);
+    
+    // Update account name in OneKey
+    await backgroundApiProxy.serviceAccount.updateAccount({
+      accountId: params.accountId,
+      name: newName,
+    });
+    
+    console.log('[WalletService] Updated account name:', params.accountId, '->', newName);
   } catch (error) {
-    console.error('[WalletService] Failed to get next account index:', error);
-    return 0; // Fallback to index 0
+    console.error('[WalletService] Failed to update account name:', error);
+    throw error;
   }
 }
 
