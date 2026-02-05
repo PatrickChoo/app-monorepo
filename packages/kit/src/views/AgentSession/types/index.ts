@@ -39,8 +39,9 @@ export interface IAgentAuthorization {
   // The AI agent/skill identifier
   agentId: string;
   agentName: string;
+  agentDescription?: string;
   // Authorization rules
-  rules: IAgentAuthorizationRule;
+  rules?: IAgentAuthorizationRule;
   // Amount authorized/allocated
   allocatedAmount?: string;
   allocatedAmountUsd?: string;
@@ -55,14 +56,29 @@ export interface IAgentAuthorization {
   // Timestamps
   createdAt: number;
   updatedAt: number;
+  
   // For Mode A: sub-wallet address
   subWalletAddress?: string;
   // For Mode A: sub-wallet account ID for backend tracking
   subWalletAccountId?: string;
   // For Mode A: BIP44 derivation path of the sub-wallet
   subWalletPath?: string;
+  // For Mode A: derivation index (10,000+)
+  derivationIndex?: number;
+  // For Mode A: funding source account
+  fundingAccountId?: string;
+  fundingAccountAddress?: string;
   // For Mode A/B: Transaction hash of funding operation
   fundingTxHash?: string;
+  
+  // For Mode A: Permission mode
+  permissionMode?: 'ask-every-time' | 'always-allow';
+  // For Mode A: Whether private key was exported
+  privateKeyExported?: boolean;
+  
+  // For Mode A: Purpose of authorization
+  purpose?: string;
+  
   // For Mode B: vault contract address
   vaultContractAddress?: string;
   // For Mode C: session key public key
