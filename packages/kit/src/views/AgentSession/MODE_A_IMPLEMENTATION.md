@@ -43,9 +43,16 @@ interface IUserAuthorizationConfig {
 - ✅ 调整转账金额（不受 Agent 建议限制）
 - ✅ 选择权限模式（托管/自主）
 
-### 3. 审计日志系统
+### 3. 审计日志系统（类似 1Password CLI）
 
-**所有关键操作都会记录**:
+**用户可在设置中控制**:
+- ✅ 开启/关闭审计日志（默认开启）
+- ✅ 设置保留期（30/60/90/180/365 天）
+- ✅ 自动清理旧日志
+- ✅ 导出日志（JSON 格式）
+- ✅ 手动清理
+
+**所有关键操作都会记录**（当启用时）:
 ```typescript
 interface IAuditLog {
   id: string;
@@ -83,6 +90,12 @@ interface IAuditLog {
    - 显示详细操作记录
    - 按时间排序
    - 不同操作类型的可视化
+
+3. **AgentSessionSettings** - 设置页面
+   - 启用/禁用审计日志
+   - 配置保留期
+   - 导出和清理功能
+   - 隐私说明
 
 ## 完整授权流程
 
@@ -163,15 +176,20 @@ const AGENT_DERIVATION_CONFIG = {
 AgentSession/
 ├── services/
 │   ├── authorization.ts          # 新：完整授权流程
-│   ├── storage.ts                # 更新：添加审计日志函数
+│   ├── storage.ts                # 更新：添加审计日志函数（自动检查设置）
+│   ├── settings.ts               # 新：设置管理
 │   └── wallet.ts                 # HD 派生和转账
 ├── pages/
 │   ├── AuthorizationHistory.tsx  # 新：授权列表页面
-│   └── AuditLogViewer.tsx        # 新：审计日志查看器
+│   ├── AuditLogViewer.tsx        # 新：审计日志查看器
+│   └── AgentSessionSettings.tsx  # 新：设置页面（审计日志开关）
 ├── skills/modeExecutors/
 │   └── modeA.ts                  # 更新：使用新的 createAgentAuthorization
-└── types/
-    └── index.ts                  # 更新：新增字段
+├── types/
+│   └── index.ts                  # 更新：新增字段
+└── docs/
+    ├── MODE_A_IMPLEMENTATION.md  # 新：完整实现文档
+    └── AUDIT_LOGGING.md          # 新：审计日志文档
 ```
 
 ## 使用示例
@@ -199,6 +217,28 @@ const activeAuths = await getActiveAuthorizations();
 import { getAuditLogsByAuthorization } from '../services/storage';
 
 const logs = await getAuditLogsByAuthorization(authorizationId);
+```
+
+### 4. 管理审计日志设置
+
+```typescript
+import {
+  getAgentSessionSettings,
+  updateAgentSessionSettings,
+  isAuditLoggingEnabled,
+} from '../services/settings';
+
+// 获取当前设置
+const settings = await getAgentSessionSettings();
+console.log('Audit logging:', settings.auditLoggingEnabled);
+
+// 更新设置
+await updateAgentSessionSettings({
+  auditLoggingEnabled: false,  // 关闭审计日志
+});
+
+// 检查是否启用
+const enabled = await isAuditLoggingEnabled();
 ```
 
 ### 4. 撤销授权
