@@ -105,14 +105,26 @@ export interface IAuditLog {
 
 /**
  * Add audit log entry
+ * 
+ * Only adds log if audit logging is enabled in settings
  */
 export async function addAuditLog(log: Omit<IAuditLog, 'id'>): Promise<void> {
+  // Check if audit logging is enabled
+  const { isAuditLoggingEnabled } = await import('./settings');
+  const enabled = await isAuditLoggingEnabled();
+  
+  if (!enabled) {
+    console.log('[AuditLog] Skipped (logging disabled):', log.action);
+    return;
+  }
+  
   const logEntry: IAuditLog = {
     id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     ...log,
   };
   
   await simpleDb.agentAuditLogs.addLog(logEntry);
+  console.log('[AuditLog] Added:', log.action);
 }
 
 /**
