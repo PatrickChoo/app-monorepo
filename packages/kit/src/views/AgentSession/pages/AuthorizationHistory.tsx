@@ -152,7 +152,7 @@ function AuthorizationCard({
       {/* Info */}
       <View style={styles.cardInfo}>
         <InfoRow label="Chain" value={authorization.networkName} />
-        <InfoRow label="Address" value={`${authorization.subWalletAddress.slice(0, 10)}...${authorization.subWalletAddress.slice(-8)}`} />
+        <InfoRow label="Address" value={`${authorization.agentAccountAddress.slice(0, 10)}...${authorization.agentAccountAddress.slice(-8)}`} />
         <InfoRow label="Allocated" value={`${authorization.allocatedAmount} ${authorization.tokenSymbol}`} />
         <InfoRow label="Created" value={formatDate(authorization.createdAt)} />
       </View>

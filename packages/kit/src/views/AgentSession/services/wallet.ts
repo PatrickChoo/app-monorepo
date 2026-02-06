@@ -12,12 +12,14 @@ import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/background
 import { getNetworkIdImpl } from '@onekeyhq/shared/src/engine/engineConsts';
 
 /**
- * Derive a new sub-account for the agent
+ * Derive a new account for the agent from user's wallet
  * 
  * This creates a new account using HD derivation in the agent-dedicated range (10,000+).
  * The account name will be marked with agent info and private key export status.
+ * 
+ * Mode A specific operation.
  */
-export async function deriveSubAccount(params: {
+export async function deriveAccountForAgent(params: {
   walletId: string;
   networkId: string;
   agentId: string;
@@ -32,7 +34,7 @@ export async function deriveSubAccount(params: {
 }> {
   const { walletId, networkId, agentId, agentName, reuseIfExists = true } = params;
 
-  console.log('[WalletService] Deriving sub-account:', { walletId, networkId, agentId, agentName });
+  console.log('[WalletService] Deriving agent account:', { walletId, networkId, agentId, agentName });
 
   try {
     // 1. Check if this agent already has an account (if reuse is enabled)
@@ -76,12 +78,12 @@ export async function deriveSubAccount(params: {
     });
 
     if (!account || account.length === 0) {
-      throw new Error('Failed to derive sub-account');
+      throw new Error('Failed to derive agent account');
     }
 
     const newAccount = account[0];
 
-    console.log('[WalletService] Sub-account derived:', {
+    console.log('[WalletService] Agent account derived:', {
       address: newAccount.address,
       accountId: newAccount.id,
       path: newAccount.path,
@@ -96,9 +98,9 @@ export async function deriveSubAccount(params: {
       isNewAccount: true,
     };
   } catch (error) {
-    console.error('[WalletService] Failed to derive sub-account:', error);
+    console.error('[WalletService] Failed to derive agent account:', error);
     throw new Error(
-      `Failed to derive sub-account: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to derive agent account: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
@@ -136,11 +138,12 @@ export async function updateAgentAccountName(params: {
 }
 
 /**
- * Transfer funds to a sub-account
+ * Transfer funds between accounts
  * 
- * This creates and broadcasts a transaction from the main account to the sub-account.
+ * This creates and broadcasts a transaction from one account to another address.
+ * Used in Mode A to fund the agent account.
  */
-export async function transferToSubAccount(params: {
+export async function transferBetweenAccounts(params: {
   fromAccountId: string;
   toAddress: string;
   amount: string;
@@ -151,7 +154,7 @@ export async function transferToSubAccount(params: {
 }> {
   const { fromAccountId, toAddress, amount, networkId, password } = params;
 
-  console.log('[WalletService] Transferring to sub-account:', {
+  console.log('[WalletService] Transferring between accounts:', {
     from: fromAccountId,
     to: toAddress,
     amount,

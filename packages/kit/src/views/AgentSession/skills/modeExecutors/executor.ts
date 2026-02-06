@@ -11,21 +11,21 @@ import type {
 } from '@onekeyhq/core/src/types';
 
 /**
- * Execute transaction with Mode A (Isolated Sub-Wallet)
+ * Execute transaction with Mode A (Isolated Agent Account)
  * 
  * @param params - Transaction parameters
  * @returns Transaction hash
  */
-export async function executeWithSubWallet(params: {
-  subWalletAccountId: string;
-  subWalletAddress: string;
+export async function executeWithAgentAccount(params: {
+  agentAccountId: string;
+  agentAccountAddress: string;
   to: string;
   amount: string;
   networkId: string;
   tokenAddress?: string; // For ERC20 transfers
   data?: string; // Contract call data
 }): Promise<string> {
-  console.log('[Executor] Executing with sub-wallet:', params);
+  console.log('[Executor] Executing with agent account:', params);
 
   try {
     const backgroundApiProxy = (
@@ -34,8 +34,8 @@ export async function executeWithSubWallet(params: {
     const { vaultFactory } = await import('@onekeyhq/kit-bg/src/vaults/factory');
 
     const {
-      subWalletAccountId,
-      subWalletAddress,
+      agentAccountId,
+      agentAccountAddress,
       to,
       amount,
       networkId,
@@ -46,13 +46,13 @@ export async function executeWithSubWallet(params: {
     // 1. Get vault instance
     const vault = await vaultFactory.getVault({
       networkId,
-      accountId: subWalletAccountId,
+      accountId: agentAccountId,
     });
 
     // 2. Build transfer info
     const transfersInfo = [
       {
-        from: subWalletAddress,
+        from: agentAccountAddress,
         to,
         amount,
         token: tokenAddress || networkId, // Use token address or native token
@@ -62,14 +62,14 @@ export async function executeWithSubWallet(params: {
     // 3. Build unsigned transaction
     const unsignedTx = await backgroundApiProxy.serviceSend.buildUnsignedTx({
       networkId,
-      accountId: subWalletAccountId,
+      accountId: agentAccountId,
       transfersInfo,
     });
 
     console.log('[Executor] Built unsigned tx:', unsignedTx);
 
     // 4. Sign transaction
-    // This will use the sub-wallet's private key
+    // This will use the agent account's private key
     const signedTx = await vault.signTransaction({
       unsignedTx,
     });
@@ -79,9 +79,9 @@ export async function executeWithSubWallet(params: {
     // 5. Broadcast transaction
     const result = await backgroundApiProxy.serviceSend.broadcastTransaction({
       networkId,
-      accountId: subWalletAccountId,
+      accountId: agentAccountId,
       signedTx,
-      accountAddress: subWalletAddress,
+      accountAddress: agentAccountAddress,
     });
 
     console.log('[Executor] Broadcasted tx:', result.txid);
@@ -145,6 +145,30 @@ export async function executeWithSessionKey(params: {
   throw new Error(
     'Mode C (AA + Session Key) execution not yet implemented. Need OneKey AA integration.',
   );
+}
+
+/**
+ * @deprecated Use executeWithAgentAccount instead
+ * Backward compatibility alias
+ */
+export async function executeWithSubWallet(params: {
+  subWalletAccountId: string;
+  subWalletAddress: string;
+  to: string;
+  amount: string;
+  networkId: string;
+  tokenAddress?: string;
+  data?: string;
+}): Promise<string> {
+  return executeWithAgentAccount({
+    agentAccountId: params.subWalletAccountId,
+    agentAccountAddress: params.subWalletAddress,
+    to: params.to,
+    amount: params.amount,
+    networkId: params.networkId,
+    tokenAddress: params.tokenAddress,
+    data: params.data,
+  });
 }
 
 /**

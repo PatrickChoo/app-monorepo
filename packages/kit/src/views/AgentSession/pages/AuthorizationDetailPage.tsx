@@ -147,13 +147,13 @@ export default function AuthorizationDetailPage() {
             </SizableText>
             
             {/* Mode-specific address/key */}
-            {authorization.subWalletAddress && (
+            {authorization.agentAccountAddress && (
               <YStack gap="$1" mt="$2">
                 <SizableText size="$bodySm" color="$textSubdued">
-                  Sub-Wallet Address:
+                  Agent Account Address:
                 </SizableText>
                 <SizableText size="$bodySm" fontFamily="$mono">
-                  {authorization.subWalletAddress}
+                  {authorization.agentAccountAddress}
                 </SizableText>
               </YStack>
             )}

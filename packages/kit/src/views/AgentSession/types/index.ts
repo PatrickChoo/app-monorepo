@@ -57,16 +57,19 @@ export interface IAgentAuthorization {
   createdAt: number;
   updatedAt: number;
   
-  // For Mode A: sub-wallet address
-  subWalletAddress?: string;
-  // For Mode A: sub-wallet account ID for backend tracking
-  subWalletAccountId?: string;
-  // For Mode A: BIP44 derivation path of the sub-wallet
-  subWalletPath?: string;
-  // For Mode A: derivation index (10,000+)
-  derivationIndex?: number;
-  // For Mode A: funding source account
+  // For Mode A: Agent account address (derived from user's wallet)
+  agentAccountAddress?: string;
+  // For Mode A: Agent account ID (OneKey internal tracking)
+  agentAccountId?: string;
+  // For Mode A: BIP44 derivation path of the agent account
+  agentAccountPath?: string;
+  // For Mode A: Derivation index in agent-dedicated range (10,000+)
+  agentAccountIndex?: number;
+  // For Mode A: Source wallet ID (which wallet the agent account is derived from)
+  sourceWalletId?: string;
+  // For Mode A: Funding source account ID
   fundingAccountId?: string;
+  // For Mode A: Funding source account address
   fundingAccountAddress?: string;
   // For Mode A/B: Transaction hash of funding operation
   fundingTxHash?: string;

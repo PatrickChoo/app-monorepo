@@ -2,8 +2,8 @@
  * Agent Authorization Service
  * 
  * Handles the complete authorization flow for AI agents:
- * 1. Derive sub-account with dedicated derivation range (10,000+)
- * 2. Transfer funds from user's account
+ * 1. Derive agent account from user's wallet with dedicated derivation range (10,000+)
+ * 2. Transfer funds from user's account to agent account
  * 3. Export private key if always-allow mode
  * 4. Create authorization record with audit logs
  */
@@ -15,7 +15,7 @@ import {
   EAgentAuthorizationStatus,
   type IAgentAuthorization,
 } from '../types';
-import { deriveSubAccount, transferToSubAccount, exportPrivateKey, promptPassword } from './wallet';
+import { deriveAccountForAgent, transferBetweenAccounts, exportPrivateKey, promptPassword } from './wallet';
 import { addAuthorization, addAuditLog } from './storage';
 
 /**
@@ -59,10 +59,10 @@ export interface IUserAuthorizationConfig {
 export interface IAuthorizationResult {
   success: boolean;
   authorizationId: string;
-  subWalletAddress: string;
-  subWalletAccountId: string;
-  subWalletPath: string;
-  derivationIndex: number;
+  agentAccountAddress: string;
+  agentAccountId: string;
+  agentAccountPath: string;
+  agentAccountIndex: number;
   privateKey?: string;        // Only returned in always-allow mode
   fundingTxHash: string;
   allocatedAmount: string;
@@ -73,16 +73,15 @@ export interface IAuthorizationResult {
  * Create agent authorization
  * 
  * Complete flow:
- * 1. Derive sub-account in agent-dedicated range (index 10,000+)
- * 2. Transfer funds from user's selected account
+ * 1. Derive agent account from user's wallet in agent-dedicated range (index 10,000+)
+ * 2. Transfer funds from user's selected account to agent account
  * 3. Export private key if always-allow mode
  * 4. Create authorization record
  * 5. Log audit trail
  * 
  * @param request - Agent's authorization request
  * @param userConfig - User's configuration
- * @param password - User's password (already collected)
- * @returns Authorization result with sub-wallet info
+ * @returns Authorization result with agent account info
  */
 export async function createAgentAuthorization(
   request: IAgentAuthorizationRequest,
@@ -98,9 +97,9 @@ export async function createAgentAuthorization(
     // Get password once for all operations
     const password = await promptPassword();
     
-    // Step 1: Derive sub-account
-    console.log('[Authorization] Step 1: Deriving sub-account...');
-    const subAccount = await deriveSubAccount({
+    // Step 1: Derive agent account
+    console.log('[Authorization] Step 1: Deriving agent account...');
+    const agentAccount = await deriveAccountForAgent({
       walletId: userConfig.walletId,
       networkId: request.chainId,
       agentId: request.agentId,
@@ -108,21 +107,21 @@ export async function createAgentAuthorization(
       reuseIfExists: true,
     });
     
-    console.log('[Authorization] Sub-account derived:', {
-      address: subAccount.address,
-      path: subAccount.path,
-      index: subAccount.derivationIndex,
-      isNew: subAccount.isNewAccount,
+    console.log('[Authorization] Agent account derived:', {
+      address: agentAccount.address,
+      path: agentAccount.path,
+      index: agentAccount.derivationIndex,
+      isNew: agentAccount.isNewAccount,
     });
     
     // Register to agent account registry (if new account)
-    if (subAccount.isNewAccount) {
+    if (agentAccount.isNewAccount) {
       const { registerAgentAccount } = await import('./agentAccountRegistry');
       await registerAgentAccount({
-        accountId: subAccount.accountId,
-        address: subAccount.address,
-        derivationIndex: subAccount.derivationIndex,
-        derivationPath: subAccount.path,
+        accountId: agentAccount.accountId,
+        address: agentAccount.address,
+        derivationIndex: agentAccount.derivationIndex,
+        derivationPath: agentAccount.path,
         agentId: request.agentId,
         agentName: request.agentName,
         authorizationId: 'pending',  // Will be updated later
@@ -136,19 +135,19 @@ export async function createAgentAuthorization(
       agentId: request.agentId,
       action: 'derive-account',
       details: {
-        address: subAccount.address,
-        path: subAccount.path,
-        derivationIndex: subAccount.derivationIndex,
-        isNewAccount: subAccount.isNewAccount,
+        address: agentAccount.address,
+        path: agentAccount.path,
+        derivationIndex: agentAccount.derivationIndex,
+        isNewAccount: agentAccount.isNewAccount,
       },
       timestamp: Date.now(),
     });
     
     // Step 2: Transfer funds
     console.log('[Authorization] Step 2: Transferring funds...');
-    const fundingTx = await transferToSubAccount({
+    const fundingTx = await transferBetweenAccounts({
       fromAccountId: userConfig.funding.fromAccountId,
-      toAddress: subAccount.address,
+      toAddress: agentAccount.address,
       amount: userConfig.funding.amount,
       networkId: request.chainId,
       password,
@@ -163,7 +162,7 @@ export async function createAgentAuthorization(
       action: 'fund-account',
       details: {
         fromAccount: userConfig.funding.fromAccountId,
-        toAddress: subAccount.address,
+        toAddress: agentAccount.address,
         amount: userConfig.funding.amount,
         tokenSymbol: userConfig.funding.tokenSymbol,
         txHash: fundingTx.txHash,
@@ -176,7 +175,7 @@ export async function createAgentAuthorization(
     if (userConfig.permission.mode === 'always-allow') {
       console.log('[Authorization] Step 3: Exporting private key...');
       privateKey = await exportPrivateKey({
-        accountId: subAccount.accountId,
+        accountId: agentAccount.accountId,
         password,
       });
       console.log('[Authorization] Private key exported');
@@ -184,9 +183,9 @@ export async function createAgentAuthorization(
       // Update account name to reflect private key export
       const { updateAgentAccountName } = await import('./wallet');
       await updateAgentAccountName({
-        accountId: subAccount.accountId,
+        accountId: agentAccount.accountId,
         agentName: request.agentName,
-        derivationIndex: subAccount.derivationIndex,
+        derivationIndex: agentAccount.derivationIndex,
         privateKeyExported: true,  // ← Changed
         status: 'active',
       });
@@ -197,8 +196,8 @@ export async function createAgentAuthorization(
         agentId: request.agentId,
         action: 'export-private-key',
         details: {
-          accountId: subAccount.accountId,
-          address: subAccount.address,
+          accountId: agentAccount.accountId,
+          address: agentAccount.address,
           warning: 'Agent has full control over this account',
         },
         timestamp: Date.now(),
@@ -223,11 +222,12 @@ export async function createAgentAuthorization(
       chainId: request.chainId,
       networkName: request.networkName,
       
-      // Sub-wallet info
-      subWalletAddress: subAccount.address,
-      subWalletAccountId: subAccount.accountId,
-      subWalletPath: subAccount.path,
-      derivationIndex: subAccount.derivationIndex,
+      // Agent account info
+      agentAccountAddress: agentAccount.address,
+      agentAccountId: agentAccount.accountId,
+      agentAccountPath: agentAccount.path,
+      agentAccountIndex: agentAccount.derivationIndex,
+      sourceWalletId: userConfig.walletId,
       
       // Funding info
       fundingAccountId: userConfig.funding.fromAccountId,
@@ -252,10 +252,10 @@ export async function createAgentAuthorization(
     
     // Update registry with authorization ID
     const { updateAgentAccountStatus } = await import('./agentAccountRegistry');
-    if (subAccount.isNewAccount) {
+    if (agentAccount.isNewAccount) {
       // Update the authorizationId in registry
       await simpleDb.agentAccountRegistry.updateAuthorizationId(
-        subAccount.accountId,
+        agentAccount.accountId,
         authId,
       );
     }
@@ -280,10 +280,10 @@ export async function createAgentAuthorization(
     const result: IAuthorizationResult = {
       success: true,
       authorizationId: authId,
-      subWalletAddress: subAccount.address,
-      subWalletAccountId: subAccount.accountId,
-      subWalletPath: subAccount.path,
-      derivationIndex: subAccount.derivationIndex,
+      agentAccountAddress: agentAccount.address,
+      agentAccountId: agentAccount.accountId,
+      agentAccountPath: agentAccount.path,
+      agentAccountIndex: agentAccount.derivationIndex,
       privateKey,  // Only if always-allow mode
       fundingTxHash: fundingTx.txHash,
       allocatedAmount: userConfig.funding.amount,
@@ -345,22 +345,22 @@ export async function revokeAgentAuthorization(
     });
     
     // 3. Update account name to show revoked status
-    if (authorization.subWalletAccountId) {
+    if (authorization.agentAccountId) {
       const { updateAgentAccountName } = await import('./wallet');
       await updateAgentAccountName({
-        accountId: authorization.subWalletAccountId,
+        accountId: authorization.agentAccountId,
         agentName: authorization.agentName,
-        derivationIndex: authorization.derivationIndex || 0,
+        derivationIndex: authorization.agentAccountIndex || 0,
         privateKeyExported: authorization.privateKeyExported || false,
         status: 'revoked',  // ← Changed
       });
     }
     
     // 4. Update registry status
-    if (authorization.subWalletAccountId) {
+    if (authorization.agentAccountId) {
       const { updateAgentAccountStatus } = await import('./agentAccountRegistry');
       await updateAgentAccountStatus(
-        authorization.subWalletAccountId,
+        authorization.agentAccountId,
         'revoked',
       );
     }

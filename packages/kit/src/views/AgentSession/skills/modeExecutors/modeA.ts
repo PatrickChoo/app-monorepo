@@ -1,8 +1,8 @@
 /**
- * Mode A: Isolated Sub-Wallet Executor
+ * Mode A: Isolated Agent Account Executor
  * 
- * Creates a dedicated wallet for AI with a fixed balance.
- * AI can only spend the balance of this isolated wallet.
+ * Creates a dedicated account for AI agent (derived from user's wallet) with a fixed balance.
+ * AI can only spend the balance of this isolated account.
  * 
  * Works on: All chains (EVM and non-EVM)
  * 
@@ -18,14 +18,14 @@ import type {
 import { createAgentAuthorization } from '../../services/authorization';
 
 /**
- * Execute Mode A: Isolated Sub-Wallet
+ * Execute Mode A: Isolated Agent Account
  * 
  * @deprecated Use createAgentAuthorization() instead
  * 
  * This function is kept for backward compatibility.
  * 
  * @param request - Authorization request from AI
- * @returns Authorization result with sub-wallet address
+ * @returns Authorization result with agent account info
  */
 export async function executeModeA(
   request: IAgentAuthorizationRequest & {
@@ -35,7 +35,7 @@ export async function executeModeA(
     permissionMode?: 'ask-every-time' | 'always-allow';
   },
 ): Promise<IAuthorizationResult> {
-  console.log('[ModeA] Executing Isolated Sub-Wallet authorization (deprecated wrapper)');
+  console.log('[ModeA] Executing Isolated Agent Account authorization (deprecated wrapper)');
   console.log('[ModeA] Redirecting to createAgentAuthorization()');
   
   // Convert old-style request to new format

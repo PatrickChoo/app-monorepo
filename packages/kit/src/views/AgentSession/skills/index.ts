@@ -223,13 +223,13 @@ export async function executeWithAuthorization(
 }
 
 /**
- * Execute transaction using sub-wallet (Mode A)
+ * Execute transaction using agent account (Mode A)
  */
 async function executeWithSubWallet(
   authorization: IAgentAuthorization,
   params: IExecutionParams,
 ): Promise<string> {
-  console.log('[AgentSession] Executing with sub-wallet:', authorization.subWalletAddress);
+  console.log('[AgentSession] Executing with agent account:', authorization.agentAccountAddress);
 
   // TODO: Implement actual transaction logic
   // This should:
