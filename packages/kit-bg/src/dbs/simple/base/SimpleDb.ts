@@ -539,4 +539,22 @@ export class SimpleDb {
     Object.defineProperty(this, 'agentAuthorizations', { value });
     return value;
   }
+
+  get agentAccountRegistry() {
+    const SimpleDbEntityAgentAccountRegistry = (
+      require('../entity/SimpleDbEntityAgentAccountRegistry') as unknown as typeof import('../entity/SimpleDbEntityAgentAccountRegistry')
+    ).SimpleDbEntityAgentAccountRegistry;
+    const value = new SimpleDbEntityAgentAccountRegistry();
+    Object.defineProperty(this, 'agentAccountRegistry', { value });
+    return value;
+  }
+
+  get agentAuditLogs() {
+    const SimpleDbEntityAgentAuditLogs = (
+      require('../entity/SimpleDbEntityAgentAuditLogs') as unknown as typeof import('../entity/SimpleDbEntityAgentAuditLogs')
+    ).SimpleDbEntityAgentAuditLogs;
+    const value = new SimpleDbEntityAgentAuditLogs();
+    Object.defineProperty(this, 'agentAuditLogs', { value });
+    return value;
+  }
 }

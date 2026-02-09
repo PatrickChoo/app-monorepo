@@ -13,6 +13,7 @@ export interface IAgentAccountRegistry {
   address: string;                // Account address
   derivationIndex: number;        // HD derivation index (10,000+)
   derivationPath: string;         // Full derivation path
+  networkId: string;              // Network ID (for filtering)
   
   // Agent info
   agentId: string;                // Agent unique ID
@@ -43,7 +44,13 @@ export async function registerAgentAccount(
   };
   
   await simpleDb.agentAccountRegistry.add(record);
-  console.log('[AgentRegistry] Registered:', record.accountId, 'for', record.agentName);
+  console.log('[AgentRegistry] Registered:', {
+    accountId: record.accountId,
+    address: record.address,
+    derivationIndex: record.derivationIndex,
+    networkId: record.networkId,
+    agentName: record.agentName,
+  });
 }
 
 /**
@@ -56,13 +63,13 @@ export async function getAgentAccountByAccountId(
 }
 
 /**
- * Get agent account by agent ID and chain
+ * Get agent account by agent ID and network
  */
 export async function getAgentAccountByAgent(
   agentId: string,
-  chainId: string,
+  networkId: string,
 ): Promise<IAgentAccountRegistry | null> {
-  return simpleDb.agentAccountRegistry.getByAgentAndChain(agentId, chainId);
+  return simpleDb.agentAccountRegistry.getByAgentAndChain(agentId, networkId);
 }
 
 /**
@@ -109,23 +116,21 @@ export async function isAgentAccount(
 
 /**
  * Get next available agent derivation index
+ * 
+ * Uses database to find the highest index and increments it.
+ * Ensures no index conflicts.
  */
 export async function getNextAgentDerivationIndex(
-  chainId: string,
+  networkId: string,
 ): Promise<number> {
-  const allAccounts = await getAllAgentAccounts();
-  const chainAccounts = allAccounts.filter(acc => {
-    // Filter by chain (extract from derivation path or other means)
-    // For now, simple implementation
-    return true;
-  });
+  console.log('[AgentRegistry] Getting next derivation index for:', networkId);
   
-  if (chainAccounts.length === 0) {
-    return 10_000; // Start from 10,000
-  }
+  // Use the database method that filters by network
+  const nextIndex = await simpleDb.agentAccountRegistry.getNextDerivationIndex(networkId);
   
-  const maxIndex = Math.max(...chainAccounts.map(acc => acc.derivationIndex));
-  return maxIndex + 1;
+  console.log('[AgentRegistry] Next index:', nextIndex);
+  
+  return nextIndex;
 }
 
 /**
