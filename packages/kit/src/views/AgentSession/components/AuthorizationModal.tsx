@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import {
   Button,
@@ -11,10 +11,14 @@ import {
   XStack,
   YStack,
 } from '@onekeyhq/components';
+import { useActiveAccount } from '@onekeyhq/kit/src/states/jotai/contexts/accountSelector';
 import platformEnv from '@onekeyhq/shared/src/platformEnv';
 
 import type { IAgentAuthorizationRequest } from '../types';
 import { EAgentAuthorizationMode } from '../types';
+import { confirmAuthorizationFromUI, rejectAuthorizationFromUI } from '../skills/authorizationBridge';
+import { createAgentAuthorization } from '../services/authorization';
+import type { IUserAuthorizationConfig } from '../services/authorization';
 
 import { AuthorizationDetails } from './AuthorizationDetails';
 import { ModeExplanation } from './ModeExplanation';
@@ -22,19 +26,21 @@ import { ModeExplanation } from './ModeExplanation';
 interface IAuthorizationModalProps {
   request: IAgentAuthorizationRequest;
   visible: boolean;
-  onConfirm: (params: {
-    useBiometric: boolean;
-    selectedMode: EAgentAuthorizationMode;
-  }) => Promise<void>;
-  onReject: () => void;
 }
 
 export function AuthorizationModal({
   request,
   visible,
-  onConfirm,
-  onReject,
 }: IAuthorizationModalProps) {
+  // Get active account info
+  const {
+    activeAccount: {
+      account,
+      wallet,
+      network,
+    },
+  } = useActiveAccount({ num: 0 });
+
   const [useBiometric, setUseBiometric] = useState(
     platformEnv.isNative && platformEnv.supportsBiometric,
   );
@@ -43,21 +49,58 @@ export function AuthorizationModal({
     request.requestedMode || EAgentAuthorizationMode.IsolatedSubWallet,
   );
 
+  // Determine funding amount (use suggested or user can adjust)
+  const [fundingAmount, setFundingAmount] = useState<string>(
+    request.suggestedAmount || '0',
+  );
+
   const handleConfirm = useCallback(async () => {
+    if (!account || !wallet || !network) {
+      Toast.error({
+        title: 'Error',
+        message: 'No active account found. Please select an account first.',
+      });
+      return;
+    }
+
     try {
       setIsProcessing(true);
-      await onConfirm({ useBiometric, selectedMode });
-      
+
+      // Build user configuration
+      const userConfig: IUserAuthorizationConfig = {
+        funding: {
+          fromAccountId: account.id,
+          fromAddress: account.address,
+          amount: fundingAmount,
+          tokenSymbol: request.suggestedToken || 'ETH',
+        },
+        permission: {
+          mode: 'ask-every-time', // TODO: Make this configurable
+        },
+        walletId: wallet.id,
+      };
+
+      // Create authorization
+      const result = await createAgentAuthorization(request, userConfig);
+
+      console.log('[AuthorizationModal] Authorization created:', result);
+
+      // Notify bridge
+      confirmAuthorizationFromUI({
+        useBiometric,
+        selectedMode,
+      });
+
       Toast.success({
         title: 'Authorization Successful',
-        message: `AI agent authorized with ${selectedMode} mode`,
+        message: `Agent authorized: ${result.agentAccountAddress}`,
       });
     } catch (error) {
-      console.error('Authorization confirmation failed:', error);
-      
+      console.error('[AuthorizationModal] Authorization failed:', error);
+
       // User-friendly error messages
       let errorMessage = 'Failed to authorize agent. Please try again.';
-      
+
       if (error instanceof Error) {
         // Handle specific error cases
         if (error.message.includes('password')) {
@@ -72,19 +115,22 @@ export function AuthorizationModal({
           errorMessage = error.message;
         }
       }
-      
+
       Toast.error({
         title: 'Authorization Failed',
         message: errorMessage,
       });
+
+      // Notify bridge of rejection
+      rejectAuthorizationFromUI();
     } finally {
       setIsProcessing(false);
     }
-  }, [onConfirm, useBiometric, selectedMode]);
+  }, [account, wallet, network, useBiometric, selectedMode, request, fundingAmount]);
 
   const handleReject = useCallback(() => {
-    onReject();
-  }, [onReject]);
+    rejectAuthorizationFromUI();
+  }, []);
 
   if (!visible) return null;
 
