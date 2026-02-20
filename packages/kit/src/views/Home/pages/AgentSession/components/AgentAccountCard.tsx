@@ -31,6 +31,7 @@ interface AgentAccountCardProps {
   networkId: string;
   balance?: { balance: string; symbol: string };
   onPress?: () => void;
+  onRevoke?: (authId: string) => void;
 }
 
 export default function AgentAccountCard({
@@ -39,8 +40,10 @@ export default function AgentAccountCard({
   networkId,
   balance,
   onPress,
+  onRevoke,
 }: AgentAccountCardProps) {
   const loading = !balance;
+  const [isRevoking, setIsRevoking] = useState(false);
 
   // 状态指示器颜色
   const statusColor = {
@@ -72,6 +75,28 @@ export default function AgentAccountCard({
     // TODO: 暂停/恢复授权
     console.log('Pause:', authorization.agentName);
   }, [authorization.agentName]);
+
+  const handleRevoke = useCallback(async (e: any) => {
+    e?.stopPropagation();
+    
+    // Confirm before revoking
+    if (!confirm(`确定要撤销 "${authorization.agentName}" 的授权吗？\n\n这将立即停止 Agent 的所有权限。`)) {
+      return;
+    }
+
+    try {
+      setIsRevoking(true);
+      
+      if (onRevoke) {
+        await onRevoke(authorization.id);
+      }
+    } catch (error) {
+      console.error('Failed to revoke authorization:', error);
+      // TODO: Show error toast
+    } finally {
+      setIsRevoking(false);
+    }
+  }, [authorization.agentName, authorization.id, onRevoke]);
 
   return (
     <Pressable onPress={onPress}>
@@ -184,9 +209,22 @@ export default function AgentAccountCard({
             variant="secondary"
             onPress={onPress}
             iconBefore="ChevronRightOutline"
+            disabled={isRevoking}
           >
             详情
           </Button>
+
+          {authorization.status !== 'Revoked' && onRevoke && (
+            <Button
+              size="small"
+              variant="destructive"
+              onPress={handleRevoke}
+              iconBefore="XCircleOutline"
+              disabled={isRevoking}
+            >
+              {isRevoking ? '...' : '撤销'}
+            </Button>
+          )}
         </HStack>
       </Box>
     </Pressable>

@@ -53,6 +53,21 @@ export default function AgentTab({ walletId, accountId, networkId }: AgentTabPro
     refresh();
   }, [refresh]);
 
+  const handleRevoke = useCallback(async (authId: string) => {
+    try {
+      await backgroundApiProxy.serviceAgentSession.revokeAuthorization(authId);
+      
+      // Refresh the list after revocation
+      refresh();
+      
+      // TODO: Show success toast
+      console.log('Authorization revoked successfully:', authId);
+    } catch (error) {
+      console.error('Failed to revoke authorization:', error);
+      throw error; // Re-throw for the card to handle
+    }
+  }, [refresh]);
+
   const renderHeader = useMemo(() => {
     if (!authorizations?.length) return null;
     
@@ -64,10 +79,11 @@ export default function AgentTab({ walletId, accountId, networkId }: AgentTabPro
       authorization={item}
       balance={balances[item.agentAccountId]}
       onPress={() => handleAgentPress(item)}
+      onRevoke={handleRevoke}
       walletId={walletId}
       networkId={networkId}
     />
-  ), [handleAgentPress, balances, walletId, networkId]);
+  ), [handleAgentPress, handleRevoke, balances, walletId, networkId]);
 
   const renderEmpty = useCallback(() => {
     if (loading) {
