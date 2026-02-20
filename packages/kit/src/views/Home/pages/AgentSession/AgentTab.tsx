@@ -36,6 +36,8 @@ export default function AgentTab({ walletId, accountId, networkId }: AgentTabPro
     refresh 
   } = useAgentAuthorizations(walletId);
 
+  const [error, setError] = React.useState<string | null>(null);
+
   const handleCreateAgent = useCallback(() => {
     // TODO: 打开创建 Agent 流程
     console.log('Create Agent');
@@ -45,6 +47,11 @@ export default function AgentTab({ walletId, accountId, networkId }: AgentTabPro
     // TODO: 打开 Agent 详情页
     console.log('Agent detail:', auth.agentName);
   }, []);
+
+  const handleRetry = useCallback(() => {
+    setError(null);
+    refresh();
+  }, [refresh]);
 
   const renderHeader = useMemo(() => {
     if (!authorizations?.length) return null;
@@ -67,12 +74,33 @@ export default function AgentTab({ walletId, accountId, networkId }: AgentTabPro
       return (
         <Box flex={1} justifyContent="center" alignItems="center" py="$20">
           <Spinner size="large" />
+          <Text variant="bodyMd" color="$textSubdued" mt="$4">
+            加载 Agent 账户...
+          </Text>
+        </Box>
+      );
+    }
+
+    if (error) {
+      return (
+        <Box flex={1} justifyContent="center" alignItems="center" py="$20">
+          <VStack space="$4" alignItems="center">
+            <Text variant="headingMd" fontWeight="600">
+              加载失败
+            </Text>
+            <Text variant="bodyMd" color="$textSubdued" textAlign="center">
+              {error}
+            </Text>
+            <Button variant="primary" onPress={handleRetry}>
+              重试
+            </Button>
+          </VStack>
         </Box>
       );
     }
 
     return <EmptyAgentState onCreatePress={handleCreateAgent} />;
-  }, [loading, handleCreateAgent]);
+  }, [loading, error, handleCreateAgent, handleRetry]);
 
   return (
     <Box flex={1} bg="$bgApp">
