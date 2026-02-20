@@ -246,15 +246,63 @@ export async function getAccountBalance(params: {
 /**
  * Prompt user for password
  * 
- * This triggers OneKey's built-in password modal.
+ * This triggers OneKey's built-in password modal with context.
+ * 
+ * @param reason - Reason for password prompt (default: CreateTransaction)
  */
-export async function promptPassword(): Promise<string> {
+export async function promptPassword(
+  reason?: import('@onekeyhq/shared/types/setting').EReasonForNeedPassword,
+): Promise<string> {
+  const { EReasonForNeedPassword } = await import(
+    '@onekeyhq/shared/types/setting'
+  );
+
   try {
     const password =
-      await backgroundApiProxy.servicePassword.promptPasswordVerify();
+      await backgroundApiProxy.servicePassword.promptPasswordVerify({
+        reason: reason || EReasonForNeedPassword.CreateTransaction,
+      });
     return password;
   } catch (error) {
     console.error('[WalletService] Password prompt failed:', error);
     throw new Error('Password verification failed');
+  }
+}
+
+/**
+ * Export private key from account
+ * 
+ * Used in always-allow mode to export agent account's private key.
+ * 
+ * ⚠️ Security sensitive operation - logs to audit trail.
+ */
+export async function exportPrivateKey(params: {
+  accountId: string;
+  password: string;
+}): Promise<string> {
+  const { accountId, password } = params;
+
+  console.log('[WalletService] Exporting private key for account:', accountId);
+
+  try {
+    // Get account credentials from OneKey
+    const credentials =
+      await backgroundApiProxy.serviceAccount.getAccountCredentials({
+        accountId,
+        password,
+      });
+
+    if (!credentials || !credentials.privateKey) {
+      throw new Error('Failed to export private key');
+    }
+
+    console.log('[WalletService] Private key exported successfully');
+
+    return credentials.privateKey;
+  } catch (error) {
+    console.error('[WalletService] Failed to export private key:', error);
+    throw new Error(
+      `Failed to export private key: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
