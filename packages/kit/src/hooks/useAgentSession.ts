@@ -8,10 +8,11 @@ import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/background
 import type { IAgentAuthorization } from '@onekeyhq/kit-bg/src/dbs/simple/entity/SimpleDbEntityAgentAuthorizations';
 
 /**
- * 查询钱包的所有 Agent 授权
+ * 查询钱包的所有 Agent 授权（含余额）
  */
 export function useAgentAuthorizations(walletId: string) {
   const [authorizations, setAuthorizations] = useState<IAgentAuthorization[]>([]);
+  const [balances, setBalances] = useState<Record<string, { balance: string; symbol: string }>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -23,13 +24,40 @@ export function useAgentAuthorizations(walletId: string) {
         setLoading(true);
       }
 
+      // Get authorizations
       const auths = await backgroundApiProxy.serviceAgentSession
         .getAuthorizationsByWallet(walletId);
       
       setAuthorizations(auths || []);
+
+      // Fetch balances for all agent accounts
+      if (auths && auths.length > 0) {
+        const balancePromises = auths.map(async (auth) => {
+          try {
+            const balance = await backgroundApiProxy.serviceAgentSession
+              .getAgentAccountBalance({
+                accountId: auth.agentAccountId,
+                networkId: auth.chainId,
+              });
+            return { accountId: auth.agentAccountId, balance };
+          } catch (error) {
+            console.error('Failed to fetch balance for account:', auth.agentAccountId, error);
+            return { accountId: auth.agentAccountId, balance: { balance: '0', symbol: 'ETH' } };
+          }
+        });
+
+        const balanceResults = await Promise.all(balancePromises);
+        const balanceMap = balanceResults.reduce((acc, result) => {
+          acc[result.accountId] = result.balance;
+          return acc;
+        }, {} as Record<string, { balance: string; symbol: string }>);
+
+        setBalances(balanceMap);
+      }
     } catch (error) {
       console.error('Failed to fetch agent authorizations:', error);
       setAuthorizations([]);
+      setBalances({});
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -37,15 +65,16 @@ export function useAgentAuthorizations(walletId: string) {
   }, [walletId]);
 
   useEffect(() => {
-    fetchAuthorizations();
+    void fetchAuthorizations();
   }, [fetchAuthorizations]);
 
   const refresh = useCallback(() => {
-    fetchAuthorizations(true);
+    void fetchAuthorizations(true);
   }, [fetchAuthorizations]);
 
   return {
     authorizations,
+    balances,
     loading,
     refreshing,
     refresh,
