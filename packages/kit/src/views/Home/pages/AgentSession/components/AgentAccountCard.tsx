@@ -29,6 +29,7 @@ interface AgentAccountCardProps {
   authorization: IAgentAuthorization;
   walletId: string;
   networkId: string;
+  balance?: { balance: string; symbol: string };
   onPress?: () => void;
 }
 
@@ -36,37 +37,10 @@ export default function AgentAccountCard({
   authorization,
   walletId,
   networkId,
+  balance,
   onPress,
 }: AgentAccountCardProps) {
-  const [balance, setBalance] = useState<string>('0');
-  const [loading, setLoading] = useState(true);
-
-  // 查询子账户余额
-  useEffect(() => {
-    const fetchBalance = async () => {
-      try {
-        setLoading(true);
-        
-        // TODO: 根据 derivationIndex 获取子账户地址
-        // const address = await getAgentAccountAddress(walletId, authorization.derivationIndex);
-        
-        // TODO: 查询余额
-        // const balanceData = await backgroundApiProxy.serviceToken.fetchAccountBalance({
-        //   networkId,
-        //   accountAddress: address,
-        // });
-        
-        // 临时返回模拟数据
-        setBalance('0');
-      } catch (error) {
-        console.error('Failed to fetch balance:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBalance();
-  }, [walletId, networkId, authorization.derivationIndex]);
+  const loading = !balance;
 
   // 状态指示器颜色
   const statusColor = {
@@ -148,10 +122,10 @@ export default function AgentAccountCard({
           ) : (
             <>
               <Text variant="headingMd" fontWeight="700">
-                {balance}
+                {balance?.balance || '0'}
               </Text>
               <Text variant="bodyMd" color="$textSubdued">
-                ETH
+                {balance?.symbol || 'ETH'}
               </Text>
             </>
           )}

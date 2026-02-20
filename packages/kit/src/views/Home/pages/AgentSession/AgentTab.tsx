@@ -30,6 +30,7 @@ interface AgentTabProps {
 export default function AgentTab({ walletId, accountId, networkId }: AgentTabProps) {
   const { 
     authorizations, 
+    balances,
     loading, 
     refreshing,
     refresh 
@@ -54,11 +55,12 @@ export default function AgentTab({ walletId, accountId, networkId }: AgentTabPro
   const renderItem = useCallback(({ item }: { item: IAgentAuthorization }) => (
     <AgentAccountCard 
       authorization={item}
+      balance={balances[item.agentAccountId]}
       onPress={() => handleAgentPress(item)}
       walletId={walletId}
       networkId={networkId}
     />
-  ), [handleAgentPress, walletId, networkId]);
+  ), [handleAgentPress, balances, walletId, networkId]);
 
   const renderEmpty = useCallback(() => {
     if (loading) {
