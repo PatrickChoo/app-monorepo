@@ -11,7 +11,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
 
-import { Box, Empty, Pressable, Spinner, Text, VStack } from '@onekeyhq/components';
+import { Box, Button, Empty, Pressable, Spinner, Text, VStack } from '@onekeyhq/components';
 import { useAgentAuthorizations } from '@onekeyhq/kit/src/hooks/useAgentSession';
 import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
 
