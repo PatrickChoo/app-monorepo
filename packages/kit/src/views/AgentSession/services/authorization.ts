@@ -93,6 +93,10 @@ export async function createAgentAuthorization(
   
   const startTime = Date.now();
   
+  // Generate authorization ID early for audit trail consistency
+  const authId = `auth-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  console.log('[Authorization] Generated authorization ID:', authId);
+  
   try {
     // Get password once for all operations
     const password = await promptPassword();
@@ -124,14 +128,14 @@ export async function createAgentAuthorization(
         derivationPath: agentAccount.path,
         agentId: request.agentId,
         agentName: request.agentName,
-        authorizationId: 'pending',  // Will be updated later
+        authorizationId: authId,  // Use generated ID
         privateKeyExported: false,    // Not exported yet
       });
     }
     
     // Log: Account derivation
     await addAuditLog({
-      authorizationId: 'pending',
+      authorizationId: authId,
       agentId: request.agentId,
       action: 'derive-account',
       details: {
@@ -157,7 +161,7 @@ export async function createAgentAuthorization(
     
     // Log: Funding transaction
     await addAuditLog({
-      authorizationId: 'pending',
+      authorizationId: authId,
       agentId: request.agentId,
       action: 'fund-account',
       details: {
@@ -192,7 +196,7 @@ export async function createAgentAuthorization(
       
       // Log: Private key export (sensitive operation)
       await addAuditLog({
-        authorizationId: 'pending',
+        authorizationId: authId,
         agentId: request.agentId,
         action: 'export-private-key',
         details: {
@@ -206,7 +210,6 @@ export async function createAgentAuthorization(
     
     // Step 4: Create authorization record
     console.log('[Authorization] Step 4: Creating authorization record...');
-    const authId = `auth-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     
     const authorization: IAgentAuthorization = {
       id: authId,
@@ -298,9 +301,9 @@ export async function createAgentAuthorization(
   } catch (error) {
     console.error('[Authorization] Failed:', error);
     
-    // Log: Authorization failed
+    // Log: Authorization failed (use same authId for consistency)
     await addAuditLog({
-      authorizationId: 'failed',
+      authorizationId: authId,
       agentId: request.agentId,
       action: 'authorization-failed',
       details: {
