@@ -11,6 +11,12 @@ import type {
 import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
 import { getNetworkIdImpl } from '@onekeyhq/shared/src/engine/engineConsts';
 
+import {
+  retryBalanceQuery,
+  retryBuildTransaction,
+  retryFeeValidation,
+} from '../utils/retry';
+
 /**
  * Derive a new account for the agent from user's wallet
  * 
@@ -166,12 +172,14 @@ export async function transferBetweenAccounts(params: {
   });
 
   try {
-    // Step 1: Pre-check - Get account balance
+    // Step 1: Pre-check - Get account balance (with retry)
     console.log('[WalletService] Pre-check: Fetching account balance...');
-    const balances = await backgroundApiProxy.serviceToken.getAccountBalances({
-      accountId: fromAccountId,
-      networkId,
-    });
+    const balances = await retryBalanceQuery(() =>
+      backgroundApiProxy.serviceToken.getAccountBalances({
+        accountId: fromAccountId,
+        networkId,
+      }),
+    );
 
     if (!balances || balances.length === 0) {
       throw new Error('Failed to fetch account balance');
@@ -197,7 +205,7 @@ export async function transferBetweenAccounts(params: {
       );
     }
 
-    // Step 2: Build transaction
+    // Step 2: Build transaction (with retry)
     console.log('[WalletService] Building transaction...');
     const encodedTx = {
       to: toAddress,
@@ -205,15 +213,17 @@ export async function transferBetweenAccounts(params: {
       data: '0x', // Simple transfer
     };
 
-    const unsignedTx = await backgroundApiProxy.serviceSend.buildUnsignedTx({
-      accountId: fromAccountId,
-      networkId,
-      encodedTx,
-    });
+    const unsignedTx = await retryBuildTransaction(() =>
+      backgroundApiProxy.serviceSend.buildUnsignedTx({
+        accountId: fromAccountId,
+        networkId,
+        encodedTx,
+      }),
+    );
 
     console.log('[WalletService] Unsigned tx built');
 
-    // Step 3: Pre-check - Fee overflow validation (server-side)
+    // Step 3: Pre-check - Fee overflow validation (server-side, with retry)
     console.log('[WalletService] Pre-check: Validating fee...');
     const feeInfo = unsignedTx.feeInfo;
     if (feeInfo) {
@@ -222,13 +232,15 @@ export async function transferBetweenAccounts(params: {
         networkId,
       });
 
-      const isFeeOverflow = await backgroundApiProxy.serviceSend.preCheckIsFeeInfoOverflow({
-        encodedTx,
-        feeAmount: feeInfo.totalNative || '0',
-        feeTokenSymbol: nativeToken.symbol,
-        networkId,
-        accountAddress,
-      });
+      const isFeeOverflow = await retryFeeValidation(() =>
+        backgroundApiProxy.serviceSend.preCheckIsFeeInfoOverflow({
+          encodedTx,
+          feeAmount: feeInfo.totalNative || '0',
+          feeTokenSymbol: nativeToken.symbol,
+          networkId,
+          accountAddress,
+        }),
+      );
 
       if (isFeeOverflow) {
         console.warn('[WalletService] Fee is extremely high!');
