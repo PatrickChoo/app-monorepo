@@ -142,6 +142,10 @@ export async function updateAgentAccountName(params: {
  * 
  * This creates and broadcasts a transaction from one account to another address.
  * Used in Mode A to fund the agent account.
+ * 
+ * Performs pre-flight checks:
+ * - Balance check (amount + estimated gas)
+ * - Fee overflow check (server-side validation)
  */
 export async function transferBetweenAccounts(params: {
   fromAccountId: string;
@@ -162,31 +166,124 @@ export async function transferBetweenAccounts(params: {
   });
 
   try {
-    // Build transaction
+    // Step 1: Pre-check - Get account balance
+    console.log('[WalletService] Pre-check: Fetching account balance...');
+    const balances = await backgroundApiProxy.serviceToken.getAccountBalances({
+      accountId: fromAccountId,
+      networkId,
+    });
+
+    if (!balances || balances.length === 0) {
+      throw new Error('Failed to fetch account balance');
+    }
+
+    const nativeToken = balances.find((b) => b.isNative);
+    if (!nativeToken) {
+      throw new Error('Native token not found in balance');
+    }
+
+    const currentBalance = parseFloat(nativeToken.balance || '0');
+    const transferAmount = parseFloat(amount);
+
+    console.log('[WalletService] Balance check:', {
+      current: currentBalance,
+      transfer: transferAmount,
+      symbol: nativeToken.symbol,
+    });
+
+    if (currentBalance < transferAmount) {
+      throw new Error(
+        `Insufficient balance: have ${currentBalance} ${nativeToken.symbol}, need ${transferAmount} ${nativeToken.symbol}`,
+      );
+    }
+
+    // Step 2: Build transaction
+    console.log('[WalletService] Building transaction...');
+    const encodedTx = {
+      to: toAddress,
+      value: amount,
+      data: '0x', // Simple transfer
+    };
+
     const unsignedTx = await backgroundApiProxy.serviceSend.buildUnsignedTx({
       accountId: fromAccountId,
       networkId,
-      encodedTx: {
-        to: toAddress,
-        value: amount,
-        data: '0x', // Simple transfer
-      },
+      encodedTx,
     });
 
-    console.log('[WalletService] Unsigned tx built:', unsignedTx);
+    console.log('[WalletService] Unsigned tx built');
 
-    // Sign and broadcast transaction
-    const signedTx = await backgroundApiProxy.serviceSend.signTransaction({
-      accountId: fromAccountId,
-      networkId,
+    // Step 3: Pre-check - Fee overflow validation (server-side)
+    console.log('[WalletService] Pre-check: Validating fee...');
+    const feeInfo = unsignedTx.feeInfo;
+    if (feeInfo) {
+      const accountAddress = await backgroundApiProxy.serviceAccount.getAccountAddressForApi({
+        accountId: fromAccountId,
+        networkId,
+      });
+
+      const isFeeOverflow = await backgroundApiProxy.serviceSend.preCheckIsFeeInfoOverflow({
+        encodedTx,
+        feeAmount: feeInfo.totalNative || '0',
+        feeTokenSymbol: nativeToken.symbol,
+        networkId,
+        accountAddress,
+      });
+
+      if (isFeeOverflow) {
+        console.warn('[WalletService] Fee is extremely high!');
+        // Log warning but don't block (user already confirmed in UI)
+      }
+
+      // Step 4: Final balance check (amount + gas)
+      const estimatedGas = parseFloat(feeInfo.totalNative || '0');
+      const totalRequired = transferAmount + estimatedGas;
+
+      console.log('[WalletService] Final balance check:', {
+        current: currentBalance,
+        amount: transferAmount,
+        gas: estimatedGas,
+        total: totalRequired,
+      });
+
+      if (currentBalance < totalRequired) {
+        throw new Error(
+          `Insufficient balance for gas: have ${currentBalance} ${nativeToken.symbol}, need ${totalRequired} ${nativeToken.symbol} (${transferAmount} + ${estimatedGas} gas)`,
+        );
+      }
+    }
+
+    // Step 5: Sign transaction (using password already obtained)
+    console.log('[WalletService] Signing transaction...');
+    
+    // Get vault instance to sign with provided password (avoid re-prompting)
+    const { vaultFactory } = await import('@onekeyhq/kit-bg/src/vaults/factory');
+    const vault = await vaultFactory.getVault({ networkId, accountId: fromAccountId });
+    
+    const signedTx = await vault.signTransaction({
       unsignedTx,
       password,
+      deviceParams: undefined, // Software wallet only for now
+      signOnly: false,
     });
 
+    console.log('[WalletService] Broadcasting transaction...');
+    
+    // Get account address for broadcast
+    const accountAddress = await backgroundApiProxy.serviceAccount.getAccountAddressForApi({
+      accountId: fromAccountId,
+      networkId,
+    });
+    
     const result = await backgroundApiProxy.serviceSend.broadcastTransaction({
       accountId: fromAccountId,
       networkId,
+      accountAddress,
       signedTx,
+      signature: undefined,
+      rawTxType: undefined,
+      tronResourceRentalInfo: undefined,
+      useDefaultRpc: false,
     });
 
     console.log('[WalletService] Transaction broadcasted:', result.txid);
