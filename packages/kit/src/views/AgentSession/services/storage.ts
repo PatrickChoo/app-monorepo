@@ -4,7 +4,7 @@
  * This service wraps SimpleDB Entity methods for Agent Session use.
  */
 
-import simpleDb from '@onekeyhq/kit-bg/src/dbs/simple/simpleDb';
+import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
 
 import type { IAgentAuthorization } from '../types';
 
@@ -14,7 +14,7 @@ import type { IAgentAuthorization } from '../types';
 export async function addAuthorization(
   authorization: IAgentAuthorization,
 ): Promise<void> {
-  await simpleDb.agentAuthorizations.addAuthorization(authorization);
+  await backgroundApiProxy.simpleDb.agentAuthorizations.addAuthorization(authorization);
 }
 
 /**
@@ -23,7 +23,7 @@ export async function addAuthorization(
 export async function getAuthorizationById(
   id: string,
 ): Promise<IAgentAuthorization | null> {
-  return simpleDb.agentAuthorizations.getAuthorizationById(id);
+  return backgroundApiProxy.simpleDb.agentAuthorizations.getAuthorizationById(id);
 }
 
 /**
@@ -33,14 +33,14 @@ export async function updateAuthorization(
   id: string,
   updates: Partial<IAgentAuthorization>,
 ): Promise<void> {
-  await simpleDb.agentAuthorizations.updateAuthorization(id, updates);
+  await backgroundApiProxy.simpleDb.agentAuthorizations.updateAuthorization(id, updates);
 }
 
 /**
  * Get all authorizations
  */
 export async function getAllAuthorizations(): Promise<IAgentAuthorization[]> {
-  return simpleDb.agentAuthorizations.getAllAuthorizations();
+  return backgroundApiProxy.simpleDb.agentAuthorizations.getAllAuthorizations();
 }
 
 /**
@@ -49,7 +49,7 @@ export async function getAllAuthorizations(): Promise<IAgentAuthorization[]> {
 export async function getActiveAuthorizations(): Promise<
   IAgentAuthorization[]
 > {
-  return simpleDb.agentAuthorizations.getActiveAuthorizations();
+  return backgroundApiProxy.simpleDb.agentAuthorizations.getActiveAuthorizations();
 }
 
 /**
@@ -58,28 +58,28 @@ export async function getActiveAuthorizations(): Promise<
 export async function getAuthorizationsByAgent(
   agentId: string,
 ): Promise<IAgentAuthorization[]> {
-  return simpleDb.agentAuthorizations.getAuthorizationsByAgent(agentId);
+  return backgroundApiProxy.simpleDb.agentAuthorizations.getAuthorizationsByAgent(agentId);
 }
 
 /**
  * Revoke authorization
  */
 export async function revokeAuthorization(id: string): Promise<void> {
-  await simpleDb.agentAuthorizations.revokeAuthorization(id);
+  await backgroundApiProxy.simpleDb.agentAuthorizations.revokeAuthorization(id);
 }
 
 /**
  * Delete authorization
  */
 export async function deleteAuthorization(id: string): Promise<void> {
-  await simpleDb.agentAuthorizations.deleteAuthorization(id);
+  await backgroundApiProxy.simpleDb.agentAuthorizations.deleteAuthorization(id);
 }
 
 /**
  * Clean up expired authorizations
  */
 export async function cleanupExpiredAuthorizations(): Promise<number> {
-  return simpleDb.agentAuthorizations.cleanupExpiredAuthorizations();
+  return backgroundApiProxy.simpleDb.agentAuthorizations.cleanupExpiredAuthorizations();
 }
 
 // ============================================================================
@@ -123,7 +123,7 @@ export async function addAuditLog(log: Omit<IAuditLog, 'id'>): Promise<void> {
     ...log,
   };
   
-  await simpleDb.agentAuditLogs.addLog(logEntry);
+  await backgroundApiProxy.simpleDb.agentAuditLogs.addLog(logEntry);
   console.log('[AuditLog] Added:', log.action);
 }
 
@@ -133,7 +133,7 @@ export async function addAuditLog(log: Omit<IAuditLog, 'id'>): Promise<void> {
 export async function getAuditLogsByAuthorization(
   authorizationId: string,
 ): Promise<IAuditLog[]> {
-  return simpleDb.agentAuditLogs.getLogsByAuthorization(authorizationId);
+  return backgroundApiProxy.simpleDb.agentAuditLogs.getLogsByAuthorization(authorizationId);
 }
 
 /**
@@ -142,21 +142,21 @@ export async function getAuditLogsByAuthorization(
 export async function getAuditLogsByAgent(
   agentId: string,
 ): Promise<IAuditLog[]> {
-  return simpleDb.agentAuditLogs.getLogsByAgent(agentId);
+  return backgroundApiProxy.simpleDb.agentAuditLogs.getLogsByAgent(agentId);
 }
 
 /**
  * Get all audit logs
  */
 export async function getAllAuditLogs(): Promise<IAuditLog[]> {
-  return simpleDb.agentAuditLogs.getAllLogs();
+  return backgroundApiProxy.simpleDb.agentAuditLogs.getAllLogs();
 }
 
 /**
  * Get recent audit logs (last N entries)
  */
 export async function getRecentAuditLogs(limit: number = 50): Promise<IAuditLog[]> {
-  return simpleDb.agentAuditLogs.getRecentLogs(limit);
+  return backgroundApiProxy.simpleDb.agentAuditLogs.getRecentLogs(limit);
 }
 
 /**
@@ -164,5 +164,5 @@ export async function getRecentAuditLogs(limit: number = 50): Promise<IAuditLog[
  */
 export async function cleanupOldAuditLogs(days: number = 90): Promise<number> {
   const cutoffTime = Date.now() - days * 24 * 60 * 60 * 1000;
-  return simpleDb.agentAuditLogs.cleanupLogsOlderThan(cutoffTime);
+  return backgroundApiProxy.simpleDb.agentAuditLogs.cleanupLogsOlderThan(cutoffTime);
 }

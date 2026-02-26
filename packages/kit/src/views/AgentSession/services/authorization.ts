@@ -8,29 +8,16 @@
  * 4. Create authorization record with audit logs
  */
 
-import simpleDb from '@onekeyhq/kit-bg/src/dbs/simple/simpleDb';
+import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
 
 import {
   EAgentAuthorizationMode,
   EAgentAuthorizationStatus,
   type IAgentAuthorization,
+  type IAgentAuthorizationRequest,
 } from '../types';
 import { deriveAccountForAgent, transferBetweenAccounts, exportPrivateKey, promptPassword } from './wallet';
 import { addAuthorization, addAuditLog } from './storage';
-
-/**
- * Agent authorization request from AI
- */
-export interface IAgentAuthorizationRequest {
-  agentId: string;
-  agentName: string;
-  agentDescription?: string;
-  suggestedAmount: string;
-  suggestedToken: string;
-  chainId: string;
-  networkName: string;
-  purpose: string;
-}
 
 /**
  * User's configuration for authorization
@@ -126,10 +113,11 @@ export async function createAgentAuthorization(
         address: agentAccount.address,
         derivationIndex: agentAccount.derivationIndex,
         derivationPath: agentAccount.path,
+        networkId: request.chainId,
         agentId: request.agentId,
         agentName: request.agentName,
-        authorizationId: authId,  // Use generated ID
-        privateKeyExported: false,    // Not exported yet
+        authorizationId: authId,
+        privateKeyExported: false,
       });
     }
     
@@ -213,13 +201,12 @@ export async function createAgentAuthorization(
     
     const authorization: IAgentAuthorization = {
       id: authId,
-      mode: EAgentAuthorizationMode.IsolatedSubWallet,
+      mode: request.requestedMode || EAgentAuthorizationMode.IsolatedSubWallet,
       status: EAgentAuthorizationStatus.Active,
       
       // Agent info
       agentId: request.agentId,
       agentName: request.agentName,
-      agentDescription: request.agentDescription,
       
       // Chain info
       chainId: request.chainId,
@@ -257,7 +244,7 @@ export async function createAgentAuthorization(
     const { updateAgentAccountStatus } = await import('./agentAccountRegistry');
     if (agentAccount.isNewAccount) {
       // Update the authorizationId in registry
-      await simpleDb.agentAccountRegistry.updateAuthorizationId(
+      await backgroundApiProxy.simpleDb.agentAccountRegistry.updateAuthorizationId(
         agentAccount.accountId,
         authId,
       );
@@ -271,7 +258,7 @@ export async function createAgentAuthorization(
       agentId: request.agentId,
       action: 'create-authorization',
       details: {
-        mode: 'IsolatedSubWallet',
+        mode: request.requestedMode || EAgentAuthorizationMode.IsolatedSubWallet,
         permissionMode: userConfig.permission.mode,
         allocatedAmount: userConfig.funding.amount,
         duration: `${Date.now() - startTime}ms`,

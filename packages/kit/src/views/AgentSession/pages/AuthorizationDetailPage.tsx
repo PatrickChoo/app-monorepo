@@ -67,11 +67,11 @@ export default function AuthorizationDetailPage() {
   const getModeLabel = (mode: EAgentAuthorizationMode) => {
     switch (mode) {
       case EAgentAuthorizationMode.IsolatedSubWallet:
-        return 'Mode A: Isolated Sub-Wallet';
+        return 'Isolated Sub-Wallet';
       case EAgentAuthorizationMode.VaultContract:
-        return 'Mode B: Vault Contract';
+        return 'Vault Contract';
       case EAgentAuthorizationMode.SessionKey:
-        return 'Mode C: Session Key';
+        return 'Session Key';
       default:
         return mode;
     }
@@ -251,7 +251,7 @@ export default function AuthorizationDetailPage() {
               Rules & Limits
             </SizableText>
             
-            {authorization.rules.spendingLimitUsd && (
+            {authorization.rules?.spendingLimitUsd && (
               <XStack justifyContent="space-between">
                 <SizableText size="$bodyMd" color="$textSubdued">
                   Daily Spending Limit
@@ -262,7 +262,7 @@ export default function AuthorizationDetailPage() {
               </XStack>
             )}
             
-            {authorization.rules.expiresAt && (
+            {authorization.rules?.expiresAt && (
               <XStack justifyContent="space-between">
                 <SizableText size="$bodyMd" color="$textSubdued">
                   Expires
@@ -273,7 +273,7 @@ export default function AuthorizationDetailPage() {
               </XStack>
             )}
 
-            {authorization.rules.contractWhitelist && authorization.rules.contractWhitelist.length > 0 && (
+            {authorization.rules?.contractWhitelist && authorization.rules.contractWhitelist.length > 0 && (
               <YStack gap="$1">
                 <SizableText size="$bodyMd" color="$textSubdued">
                   Allowed Contracts

@@ -12,7 +12,9 @@ import {
   YStack,
 } from '@onekeyhq/components';
 import { ETranslations } from '@onekeyhq/shared/src/locale';
-import { EModalRoutes, EModalAgentSessionRoutes } from '@onekeyhq/shared/src/routes';
+import { ETabAgentSessionRoutes } from '@onekeyhq/shared/src/routes';
+
+import useAppNavigation from '../../../hooks/useAppNavigation';
 
 import { useActiveAuthorizationsAtom, useTotalAmountsAtom } from '../states/atoms';
 import type { IAgentAuthorization } from '../types';
@@ -28,11 +30,11 @@ function AuthorizationListItem({
   const getModeLabel = (mode: EAgentAuthorizationMode) => {
     switch (mode) {
       case EAgentAuthorizationMode.IsolatedSubWallet:
-        return 'Mode A: Sub-Wallet';
+        return 'Isolated Sub-Wallet';
       case EAgentAuthorizationMode.VaultContract:
-        return 'Mode B: Vault';
+        return 'Vault Contract';
       case EAgentAuthorizationMode.SessionKey:
-        return 'Mode C: Session Key';
+        return 'Session Key';
       default:
         return mode;
     }
@@ -113,7 +115,7 @@ function AuthorizationListItem({
         </YStack>
 
         {/* Expiration */}
-        {authorization.rules.expiresAt && (
+        {authorization.rules?.expiresAt && (
           <SizableText size="$bodySm" color="$textSubdued">
             Expires: {new Date(authorization.rules.expiresAt).toLocaleDateString()}
           </SizableText>
@@ -125,14 +127,13 @@ function AuthorizationListItem({
 
 export default function AuthorizationListPage() {
   const intl = useIntl();
+  const navigation = useAppNavigation();
   const [authorizations] = useActiveAuthorizationsAtom();
   const [totals] = useTotalAmountsAtom();
 
   const handleItemPress = useCallback((id: string) => {
-    // Navigate to detail page
-    // TODO: Implement navigation using OneKey's router
-    console.log('Navigate to authorization detail:', id);
-  }, []);
+    navigation.push(ETabAgentSessionRoutes.TabAuthorizationDetail, { id });
+  }, [navigation]);
 
   return (
     <Page>

@@ -11,6 +11,7 @@ import type { ProviderApiWalletConnect } from '../providers/ProviderApiWalletCon
 import type ServiceAccount from '../services/ServiceAccount';
 import type ServiceAccountProfile from '../services/ServiceAccountProfile';
 import type ServiceAccountSelector from '../services/ServiceAccountSelector';
+import type ServiceAgentSession from '../services/ServiceAgentSession';
 import type ServiceAddressBook from '../services/ServiceAddressBook';
 import type ServiceAllNetwork from '../services/ServiceAllNetwork';
 import type ServiceApp from '../services/ServiceApp';
@@ -141,6 +142,10 @@ class BackgroundApiProxy
   serviceAccountSelector = this._createProxyService(
     'serviceAccountSelector',
   ) as ServiceAccountSelector;
+
+  serviceAgentSession = this._createProxyService(
+    'serviceAgentSession',
+  ) as ServiceAgentSession;
 
   serviceApp = this._createProxyService('serviceApp') as ServiceApp;
 

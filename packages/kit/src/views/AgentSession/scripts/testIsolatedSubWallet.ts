@@ -1,7 +1,7 @@
 /**
- * Test Mode A: Isolated Agent Account
- * 
- * This script tests the complete Mode A authorization flow:
+ * Test Isolated Sub-Wallet (Isolated Agent Account)
+ *
+ * This script tests the complete Isolated Sub-Wallet authorization flow:
  * 1. Derive agent account (index 10,000+)
  * 2. Transfer funds from main account to agent account
  * 3. Verify balances
@@ -10,7 +10,7 @@
  * Usage:
  * 1. Configure TEST_CONFIG below
  * 2. Ensure main account has testnet balance
- * 3. Run: npx ts-node testModeA.ts
+ * 3. Run: npx ts-node testIsolatedSubWallet.ts
  */
 
 import {
@@ -43,7 +43,7 @@ const TEST_CONFIG = {
   agent: {
     id: 'test-agent-001',
     name: 'Test Agent',
-    description: 'Testing Mode A isolated account authorization',
+    description: 'Testing Isolated Sub-Wallet authorization',
   },
 
   // Authorization amounts
@@ -133,7 +133,7 @@ async function step2_createAuthorization(): Promise<{
       suggestedToken: 'ETH',
       chainId: TEST_CONFIG.network.id,
       networkName: TEST_CONFIG.network.name,
-      purpose: 'Testing Mode A isolated account',
+      purpose: 'Testing Isolated Sub-Wallet',
     };
 
     // Build user configuration
@@ -281,7 +281,7 @@ async function step5_finalBalanceCheck(
  * Main Test Flow
  */
 async function main() {
-  console.log('🧪 Mode A: Isolated Agent Account Test');
+  console.log('🧪 Isolated Sub-Wallet: Agent Account Test');
   console.log('=========================================');
   console.log('Network:', TEST_CONFIG.network.name);
   console.log('Wallet:', TEST_CONFIG.wallet.walletId);

@@ -4,7 +4,7 @@
  * Manages Agent Session settings including audit logging preferences
  */
 
-import simpleDb from '@onekeyhq/kit-bg/src/dbs/simple/simpleDb';
+import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
 
 export interface IAgentSessionSettings {
   // Audit logging
@@ -28,7 +28,7 @@ const DEFAULT_SETTINGS: IAgentSessionSettings = {
  */
 export async function getAgentSessionSettings(): Promise<IAgentSessionSettings> {
   try {
-    const settings = await simpleDb.agentSettings.getSettings();
+    const settings = await backgroundApiProxy.simpleDb.agentSettings.getSettings();
     return settings || DEFAULT_SETTINGS;
   } catch (error) {
     console.error('[Settings] Failed to get settings:', error);
@@ -45,7 +45,7 @@ export async function updateAgentSessionSettings(
   try {
     const current = await getAgentSessionSettings();
     const updated = { ...current, ...updates };
-    await simpleDb.agentSettings.updateSettings(updated);
+    await backgroundApiProxy.simpleDb.agentSettings.updateSettings(updated);
     console.log('[Settings] Updated:', updates);
   } catch (error) {
     console.error('[Settings] Failed to update settings:', error);
@@ -57,7 +57,7 @@ export async function updateAgentSessionSettings(
  * Reset settings to default
  */
 export async function resetAgentSessionSettings(): Promise<void> {
-  await simpleDb.agentSettings.updateSettings(DEFAULT_SETTINGS);
+  await backgroundApiProxy.simpleDb.agentSettings.updateSettings(DEFAULT_SETTINGS);
   console.log('[Settings] Reset to defaults');
 }
 

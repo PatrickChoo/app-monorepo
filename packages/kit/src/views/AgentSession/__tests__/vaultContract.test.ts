@@ -1,5 +1,5 @@
 /**
- * Mode B (Vault Contract) Tests
+ * Vault Contract Tests
  * 
  * Tests deployment, funding, and execution via vault contracts
  */
@@ -18,7 +18,7 @@ import {
  * Mock test setup
  * NOTE: These tests require actual testnet setup
  */
-describe('Mode B: Vault Contract', () => {
+describe('Vault Contract', () => {
   const TEST_CONFIG = {
     // Use Goerli testnet for testing
     networkId: 'evm-5', // Goerli
@@ -171,7 +171,7 @@ describe('Mode B: Vault Contract', () => {
 /**
  * Integration test scenarios from DEMO_SCENARIOS.md
  */
-describe('Mode B: Integration Scenarios', () => {
+describe('Vault Contract: Integration Scenarios', () => {
   describe('Scenario 1: Simple Transfer via Vault', () => {
     it.skip('should execute end-to-end transfer flow', async () => {
       // 1. Deploy vault
@@ -244,7 +244,7 @@ describe('Mode B: Integration Scenarios', () => {
 /**
  * Gas estimation tests
  */
-describe('Mode B: Gas Optimization', () => {
+describe('Vault Contract: Gas Optimization', () => {
   it.skip('should estimate deployment gas', async () => {
     // Get gas estimate for deployment
     // This helps optimize deployment costs

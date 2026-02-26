@@ -11,7 +11,7 @@ import type {
 } from '@onekeyhq/core/src/types';
 
 /**
- * Execute transaction with Mode A (Isolated Agent Account)
+ * Execute transaction with Isolated Agent Account
  * 
  * @param params - Transaction parameters
  * @returns Transaction hash
@@ -94,7 +94,7 @@ export async function executeWithAgentAccount(params: {
 }
 
 /**
- * Execute transaction with Mode B (Vault Contract)
+ * Execute transaction with Vault Contract
  * 
  * @param params - Transaction parameters
  * @returns Transaction hash
@@ -117,12 +117,12 @@ export async function executeWithVaultContract(params: {
   // 4. Broadcast transaction
 
   throw new Error(
-    'Mode B (Vault Contract) execution not yet implemented. Need contract ABI and deployment.',
+    'Vault Contract execution not yet implemented. Need contract ABI and deployment.',
   );
 }
 
 /**
- * Execute transaction with Mode C (AA + Session Key)
+ * Execute transaction with Session Key (AA)
  * 
  * @param params - Transaction parameters
  * @returns Transaction hash
@@ -143,7 +143,7 @@ export async function executeWithSessionKey(params: {
   // 3. Wait for transaction inclusion
 
   throw new Error(
-    'Mode C (AA + Session Key) execution not yet implemented. Need OneKey AA integration.',
+    'Session Key (AA) execution not yet implemented. Need OneKey AA integration.',
   );
 }
 

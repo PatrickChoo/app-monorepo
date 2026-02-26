@@ -235,8 +235,8 @@ export const useTabRouterConfig = (params?: IGetTabRouterParams) => {
         ? {
             name: ETabRoutes.AgentSession,
             tabBarIcon: (focused?: boolean) =>
-              focused ? 'RobotSolid' : 'RobotOutline',
-            translationId: ETranslations.global_ai_agent,
+              focused ? 'BotSolid' : 'BotOutline',
+            translationId: ETranslations.global_test,
             freezeOnBlur: Boolean(params?.freezeOnBlur),
             rewrite: '/agent-session',
             exact: true,

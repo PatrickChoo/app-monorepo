@@ -13,9 +13,9 @@ export interface IAuthorizationResult {
   mode: EAgentAuthorizationMode;
   
   // Mode-specific fields
-  agentAccountAddress?: string; // Mode A - Agent account address
-  vaultContractAddress?: string; // Mode B - Vault contract address
-  sessionKeyPublicKey?: string; // Mode C - Session key public key
+  agentAccountAddress?: string; // Isolated Sub-Wallet - Agent account address
+  vaultContractAddress?: string; // Vault Contract - Vault contract address
+  sessionKeyPublicKey?: string; // Session Key - Session key public key
   
   // Common fields
   expiresAt?: number;

@@ -1,7 +1,7 @@
 /**
  * Agent Session Key Service
  * 
- * Handles session key generation and management for Agent Sessions (Mode C: AA + Session Keys)
+ * Handles session key generation and management for Agent Sessions (Session Key + AA)
  * 
  * NOTE: This is a skeleton implementation. Full implementation requires:
  * - Account Abstraction (ERC-4337) integration
@@ -67,7 +67,7 @@ export async function generateSessionKey(): Promise<SessionKey> {
 }
 
 /**
- * Register session key to AA wallet (Mode C)
+ * Register session key to AA wallet (Session Key mode)
  * 
  * Calls the AA wallet contract to register a session key with specific permissions.
  * 
@@ -165,7 +165,7 @@ export async function registerSessionKeyToAAWallet(params: {
 }
 
 /**
- * Execute transaction with session key (Mode C)
+ * Execute transaction with session key (Session Key mode)
  * 
  * Creates a UserOperation (ERC-4337) signed by the session key
  * 

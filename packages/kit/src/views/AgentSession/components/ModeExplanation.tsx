@@ -13,7 +13,7 @@ export function ModeExplanation({ mode }: IModeExplanationProps) {
     switch (mode) {
       case EAgentAuthorizationMode.IsolatedSubWallet:
         return {
-          title: '🔐 Mode A: Isolated Sub-Wallet',
+          title: '🔐 Isolated Sub-Wallet',
           description:
             'A dedicated sub-wallet will be created with limited funds. The AI agent can only access funds in this sub-wallet.',
           benefits: [
@@ -27,7 +27,7 @@ export function ModeExplanation({ mode }: IModeExplanationProps) {
 
       case EAgentAuthorizationMode.VaultContract:
         return {
-          title: '🏦 Mode B: Vault Contract',
+          title: '🏦 Vault Contract',
           description:
             'Funds are locked in a smart contract with enforced spending rules. The AI agent must follow contract rules for every transaction.',
           benefits: [
@@ -41,7 +41,7 @@ export function ModeExplanation({ mode }: IModeExplanationProps) {
 
       case EAgentAuthorizationMode.SessionKey:
         return {
-          title: '🔑 Mode C: Session Key (Account Abstraction)',
+          title: '🔑 Session Key (Account Abstraction)',
           description:
             'Uses Account Abstraction with a temporary session key. The AI agent gets limited permissions through the session key.',
           benefits: [

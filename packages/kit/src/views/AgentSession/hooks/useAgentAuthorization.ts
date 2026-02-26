@@ -6,17 +6,19 @@
 
 import { useCallback, useEffect } from 'react';
 
+import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
+
 import type {
   IAgentAuthorizationRequest,
   IAgentAuthorization,
-  EAgentAuthorizationMode,
 } from '../types';
+import { type EAgentAuthorizationMode } from '../types';
+import * as storage from '../services/storage';
 import {
   useActiveAuthorizationsAtom,
   usePendingAuthorizationRequestAtom,
   useAuthorizationHistoryAtom,
 } from '../states/atoms';
-import * as storage from '../services/storage';
 
 /**
  * Hook to load authorizations from storage on mount
@@ -28,9 +30,11 @@ export function useLoadAuthorizations() {
   useEffect(() => {
     async function loadData() {
       try {
-        const active = await storage.getActiveAuthorizations();
-        const history = await storage.getAuthorizationHistory();
-        
+        const active =
+          await backgroundApiProxy.serviceAgentSession.getActiveAuthorizations();
+        const history =
+          await backgroundApiProxy.serviceAgentSession.getAuthorizationHistory();
+
         setActiveAuthorizations(active);
         setHistory(history);
       } catch (error) {
@@ -43,60 +47,48 @@ export function useLoadAuthorizations() {
 }
 
 /**
- * Hook to request authorization (triggers modal)
- * 
+ * Hook to request authorization (triggers modal via bridge)
+ *
+ * Uses authorizationBridge which manages the Promise lifecycle.
+ * The bridge sets the pending request atom and resolves when the user confirms/rejects.
+ *
  * @returns Function to request authorization and Promise that resolves when user confirms/rejects
  */
 export function useRequestAuthorization() {
-  const [, setPendingRequest] = usePendingAuthorizationRequestAtom();
-
   return useCallback(
-    (request: IAgentAuthorizationRequest): Promise<{
+    async (request: IAgentAuthorizationRequest): Promise<{
       confirmed: boolean;
       selectedMode?: EAgentAuthorizationMode;
       useBiometric?: boolean;
     }> => {
-      return new Promise((resolve) => {
-        // Store resolve function in the request object
-        const requestWithCallback = {
-          ...request,
-          _resolve: resolve,
-        };
-
-        setPendingRequest(requestWithCallback as any);
-      });
+      const { requestAuthorizationFromUI } = await import(
+        '../skills/authorizationBridge'
+      );
+      return requestAuthorizationFromUI(request);
     },
-    [setPendingRequest],
+    [],
   );
 }
 
 /**
  * Hook to handle modal confirmation
+ *
+ * Resolution is handled by authorizationBridge (confirm/reject calls from Provider).
+ * This hook only manages the atom state cleanup.
  */
 export function useHandleAuthorizationConfirm() {
   const [pendingRequest, setPendingRequest] =
     usePendingAuthorizationRequestAtom();
 
   const confirm = useCallback(
-    async (params: {
+    async (_params: {
       useBiometric: boolean;
       selectedMode: EAgentAuthorizationMode;
     }) => {
       if (!pendingRequest) {
         return;
       }
-
-      // Call the resolve function stored in the request
-      const resolve = (pendingRequest as any)._resolve;
-      if (resolve) {
-        resolve({
-          confirmed: true,
-          selectedMode: params.selectedMode,
-          useBiometric: params.useBiometric,
-        });
-      }
-
-      // Clear pending request
+      // Clear pending request (bridge handles Promise resolution)
       setPendingRequest(null);
     },
     [pendingRequest, setPendingRequest],
@@ -106,16 +98,7 @@ export function useHandleAuthorizationConfirm() {
     if (!pendingRequest) {
       return;
     }
-
-    // Call the resolve function with rejected status
-    const resolve = (pendingRequest as any)._resolve;
-    if (resolve) {
-      resolve({
-        confirmed: false,
-      });
-    }
-
-    // Clear pending request
+    // Clear pending request (bridge handles Promise resolution)
     setPendingRequest(null);
   }, [pendingRequest, setPendingRequest]);
 
@@ -161,22 +144,6 @@ export function useUpdateAuthorization() {
       setActiveAuthorizations(updated);
     },
     [activeAuthorizations, setActiveAuthorizations],
-  );
-}
-
-/**
- * Hook to revoke an authorization
- */
-export function useRevokeAuthorization() {
-  const updateAuthorization = useUpdateAuthorization();
-
-  return useCallback(
-    async (authorizationId: string) => {
-      await updateAuthorization(authorizationId, {
-        status: 'Revoked',
-      });
-    },
-    [updateAuthorization],
   );
 }
 

@@ -4,12 +4,7 @@
  * This service wraps OneKey's wallet APIs for Agent Session use.
  */
 
-import type {
-  IAccountDeriveTypes,
-  IAccountSelectorActiveAccountInfo,
-} from '@onekeyhq/kit-bg/src/dbs/simple/entity/SimpleDbEntityAccountSelector';
 import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
-import { getNetworkIdImpl } from '@onekeyhq/shared/src/engine/engineConsts';
 
 import {
   retryBalanceQuery,
@@ -23,7 +18,7 @@ import {
  * This creates a new account using HD derivation in the agent-dedicated range (10,000+).
  * The account name will be marked with agent info and private key export status.
  * 
- * Mode A specific operation.
+ * Isolated Sub-Wallet specific operation.
  */
 export async function deriveAccountForAgent(params: {
   walletId: string;
@@ -147,7 +142,7 @@ export async function updateAgentAccountName(params: {
  * Transfer funds between accounts
  * 
  * This creates and broadcasts a transaction from one account to another address.
- * Used in Mode A to fund the agent account.
+ * Used in Isolated Sub-Wallet mode to fund the agent account.
  * 
  * Performs pre-flight checks:
  * - Balance check (amount + estimated gas)

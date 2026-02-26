@@ -1,5 +1,5 @@
 /**
- * Mode C: Session Key (Account Abstraction) Executor
+ * Session Key (Account Abstraction) Executor
  * 
  * Uses AA wallet to create a session key for AI with:
  * - Method scope (which functions AI can call)
@@ -12,12 +12,13 @@
 import {
   EAgentAuthorizationMode,
   EAgentAuthorizationStatus,
+  type IAgentAuthorization,
   type IAgentAuthorizationRequest,
 } from '../../types';
 import type { IAuthorizationResult } from '../types';
 
 /**
- * Execute Mode C: Session Key (AA)
+ * Execute Session Key (AA) authorization
  * 
  * Flow:
  * 1. Ensure AA wallet exists for this chain
@@ -30,20 +31,20 @@ import type { IAuthorizationResult } from '../types';
  * @param request - Authorization request from AI
  * @returns Authorization result with session key public key
  */
-export async function executeModeC(
+export async function executeSessionKey(
   request: IAgentAuthorizationRequest,
 ): Promise<IAuthorizationResult> {
-  console.log('[ModeC] Executing Session Key (AA) authorization');
-  console.log('[ModeC] Request:', request);
+  console.log('[SessionKey] Executing Session Key (AA) authorization');
+  console.log('[SessionKey] Request:', request);
 
   try {
     // 1. Ensure AA wallet exists
     const aaWalletAddress = await ensureAAWallet(request.chainId);
-    console.log('[ModeC] AA wallet:', aaWalletAddress);
+    console.log('[SessionKey] AA wallet:', aaWalletAddress);
 
     // 2. Generate session key pair
     const sessionKey = await generateSessionKey();
-    console.log('[ModeC] Session key generated:', sessionKey.publicKey);
+    console.log('[SessionKey] Session key generated:', sessionKey.publicKey);
 
     // 3. Calculate expiration time
     const ttlSeconds = request.rules?.ttlSeconds || 3600; // Default 1 hour
@@ -52,6 +53,7 @@ export async function executeModeC(
     // 4. Show confirmation modal to user
     const confirmed = await showAuthorizationModal({
       mode: EAgentAuthorizationMode.SessionKey,
+      agentId: request.agentId,
       agentName: request.agentName,
       chainId: request.chainId,
       networkName: request.networkName,
@@ -69,7 +71,8 @@ export async function executeModeC(
     // 5. Register session key on AA wallet
     const registerTxHash = await registerSessionKey({
       aaWalletAddress,
-      sessionPublicKey: sessionKey.publicKey,
+      aaAccountId: `aa-${request.chainId}-${aaWalletAddress}`,
+      sessionKey,
       chainId: request.chainId,
       permissions: {
         methodWhitelist: request.rules?.methodWhitelist || [],
@@ -78,7 +81,7 @@ export async function executeModeC(
         validUntil: Math.floor(expiresAt / 1000),
       },
     });
-    console.log('[ModeC] Session key registered, tx:', registerTxHash);
+    console.log('[SessionKey] Session key registered, tx:', registerTxHash);
 
     // 6. Store session key securely
     await storeSessionKey({
@@ -105,7 +108,7 @@ export async function executeModeC(
       expiresAt,
     });
 
-    console.log('[ModeC] Authorization created:', authorization.id);
+    console.log('[SessionKey] Authorization created:', authorization.id);
 
     // 8. Return result
     return {
@@ -117,7 +120,7 @@ export async function executeModeC(
       expiresAt,
     };
   } catch (error) {
-    console.error('[ModeC] Execution failed:', error);
+    console.error('[SessionKey] Execution failed:', error);
     throw error;
   }
 }
@@ -129,7 +132,7 @@ export async function executeModeC(
  * Check if user has AA wallet on this chain, otherwise create one
  */
 async function ensureAAWallet(chainId: string): Promise<string> {
-  console.log('[ModeC] Ensuring AA wallet for chain:', chainId);
+  console.log('[SessionKey] Ensuring AA wallet for chain:', chainId);
   
   // TODO: Real implementation
   // 1. Check if AA wallet exists for this user on this chain
@@ -153,7 +156,7 @@ async function generateSessionKey(): Promise<{
   privateKey: string;
   address: string;
 }> {
-  console.log('[ModeC] Generating session key pair');
+  console.log('[SessionKey] Generating session key pair');
 
   try {
     // Use SessionKeyService
@@ -161,11 +164,11 @@ async function generateSessionKey(): Promise<{
     
     const keyPair = await genKey();
 
-    console.log('[ModeC] Generated session key at address:', keyPair.address);
+    console.log('[SessionKey] Generated session key at address:', keyPair.address);
 
     return keyPair;
   } catch (error) {
-    console.error('[ModeC] Failed to generate session key:', error);
+    console.error('[SessionKey] Failed to generate session key:', error);
     throw error;
   }
 }
@@ -175,22 +178,23 @@ async function generateSessionKey(): Promise<{
  */
 async function showAuthorizationModal(params: {
   mode: EAgentAuthorizationMode;
+  agentId: string;
   agentName: string;
   chainId: string;
   networkName: string;
   amount?: string;
   tokenSymbol?: string;
   sessionKeyPublicKey?: string;
-  rules?: any;
+  rules?: Partial<import('../../types').IAgentAuthorizationRule>;
   expiresAt?: number;
 }): Promise<boolean> {
-  console.log('[ModeC] Showing authorization modal:', params);
+  console.log('[SessionKey] Showing authorization modal:', params);
 
   const { requestAuthorizationFromUI } = await import('../authorizationBridge');
 
   try {
     const result = await requestAuthorizationFromUI({
-      agentId: 'agent-demo',
+      agentId: params.agentId,
       agentName: params.agentName,
       chainId: params.chainId,
       networkName: params.networkName,
@@ -205,7 +209,7 @@ async function showAuthorizationModal(params: {
 
     return result.confirmed;
   } catch (error) {
-    console.error('[ModeC] Modal error:', error);
+    console.error('[SessionKey] Modal error:', error);
     return false;
   }
 }
@@ -227,7 +231,7 @@ async function registerSessionKey(params: {
     validUntil: number;
   };
 }): Promise<string> {
-  console.log('[ModeC] Registering session key:', params);
+  console.log('[SessionKey] Registering session key:', params);
 
   try {
     // Use SessionKeyService
@@ -249,11 +253,11 @@ async function registerSessionKey(params: {
       password,
     });
 
-    console.log('[ModeC] Session key registered:', result.txHash);
+    console.log('[SessionKey] Session key registered:', result.txHash);
     
     return result.txHash;
   } catch (error) {
-    console.error('[ModeC] Registration failed:', error);
+    console.error('[SessionKey] Registration failed:', error);
     throw error;
   }
 }
@@ -263,7 +267,7 @@ async function registerSessionKey(params: {
  */
 async function getUserPassword(): Promise<string> {
   // TODO: Implement proper password request via OneKey UI
-  console.warn('[ModeC] Password request not implemented - using empty password');
+  console.warn('[SessionKey] Password request not implemented - using empty password');
   return '';
 }
 
@@ -279,7 +283,7 @@ async function storeSessionKey(params: {
   chainId: string;
   agentId: string;
 }): Promise<void> {
-  console.log('[ModeC] Storing session key (encrypted)');
+  console.log('[SessionKey] Storing session key (encrypted)');
 
   // TODO: Real implementation
   // 1. Encrypt private key with user's master password or device key
@@ -302,13 +306,12 @@ async function createAuthorization(params: {
   spentAmount?: string;
   remainingAmount?: string;
   tokenSymbol?: string;
-  rules: any;
+  rules: Partial<import('../../types').IAgentAuthorizationRule>;
   expiresAt?: number;
 }): Promise<{ id: string }> {
-  console.log('[ModeC] Creating authorization:', params);
+  console.log('[SessionKey] Creating authorization:', params);
 
   const { addAuthorization } = await import('../../services/storage');
-  const { IAgentAuthorization } = await import('../../types');
 
   const authId = `auth-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 

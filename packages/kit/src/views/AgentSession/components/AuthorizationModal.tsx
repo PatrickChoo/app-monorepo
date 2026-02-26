@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   Button,
@@ -11,36 +11,39 @@ import {
   XStack,
   YStack,
 } from '@onekeyhq/components';
-import { useActiveAccount } from '@onekeyhq/kit/src/states/jotai/contexts/accountSelector';
+import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
 import platformEnv from '@onekeyhq/shared/src/platformEnv';
+import { EAccountSelectorSceneName } from '@onekeyhq/shared/types';
 
 import type { IAgentAuthorizationRequest } from '../types';
 import { EAgentAuthorizationMode } from '../types';
-import { confirmAuthorizationFromUI, rejectAuthorizationFromUI } from '../skills/authorizationBridge';
 import { createAgentAuthorization } from '../services/authorization';
 import type { IUserAuthorizationConfig } from '../services/authorization';
 
 import { AuthorizationDetails } from './AuthorizationDetails';
 import { ModeExplanation } from './ModeExplanation';
 
+interface IResolvedAccount {
+  accountId: string;
+  address: string;
+  walletId: string;
+  networkId: string;
+}
+
 interface IAuthorizationModalProps {
   request: IAgentAuthorizationRequest;
   visible: boolean;
+  onConfirm?: (params: { useBiometric: boolean; selectedMode: EAgentAuthorizationMode }) => void;
+  onReject?: () => void;
 }
 
 export function AuthorizationModal({
   request,
   visible,
+  onConfirm,
+  onReject,
 }: IAuthorizationModalProps) {
-  // Get active account info
-  const {
-    activeAccount: {
-      account,
-      wallet,
-      network,
-    },
-  } = useActiveAccount({ num: 0 });
-
+  const [resolvedAccount, setResolvedAccount] = useState<IResolvedAccount | null>(null);
   const [useBiometric, setUseBiometric] = useState(
     platformEnv.isNative && platformEnv.supportsBiometric,
   );
@@ -48,14 +51,48 @@ export function AuthorizationModal({
   const [selectedMode, setSelectedMode] = useState<EAgentAuthorizationMode>(
     request.requestedMode || EAgentAuthorizationMode.IsolatedSubWallet,
   );
-
-  // Determine funding amount (use suggested or user can adjust)
   const [fundingAmount, setFundingAmount] = useState<string>(
-    request.suggestedAmount || '0',
+    request.requestedAmount || '0',
   );
 
+  // Fetch the home scene's selected account on mount (no AccountSelector context needed)
+  useEffect(() => {
+    if (!visible) return;
+
+    async function resolveAccount() {
+      try {
+        const selected =
+          await backgroundApiProxy.simpleDb.accountSelector.getSelectedAccount({
+            sceneName: EAccountSelectorSceneName.home,
+            num: 0,
+          });
+
+        if (!selected?.walletId || !selected?.networkId || !selected?.accountId) {
+          console.warn('[AuthorizationModal] No active account selected in home scene');
+          return;
+        }
+
+        const account = await backgroundApiProxy.serviceAccount.getAccount({
+          networkId: selected.networkId,
+          accountId: selected.accountId,
+        });
+
+        setResolvedAccount({
+          accountId: account.id,
+          address: account.address,
+          walletId: selected.walletId,
+          networkId: selected.networkId,
+        });
+      } catch (error) {
+        console.error('[AuthorizationModal] Failed to resolve account:', error);
+      }
+    }
+
+    void resolveAccount();
+  }, [visible]);
+
   const handleConfirm = useCallback(async () => {
-    if (!account || !wallet || !network) {
+    if (!resolvedAccount) {
       Toast.error({
         title: 'Error',
         message: 'No active account found. Please select an account first.',
@@ -66,30 +103,27 @@ export function AuthorizationModal({
     try {
       setIsProcessing(true);
 
-      // Build user configuration
       const userConfig: IUserAuthorizationConfig = {
         funding: {
-          fromAccountId: account.id,
-          fromAddress: account.address,
+          fromAccountId: resolvedAccount.accountId,
+          fromAddress: resolvedAccount.address,
           amount: fundingAmount,
-          tokenSymbol: request.suggestedToken || 'ETH',
+          tokenSymbol: request.tokenSymbol || 'ETH',
         },
         permission: {
-          mode: 'ask-every-time', // TODO: Make this configurable
+          mode: 'ask-every-time',
         },
-        walletId: wallet.id,
+        walletId: resolvedAccount.walletId,
       };
 
-      // Create authorization
-      const result = await createAgentAuthorization(request, userConfig);
+      const result = await createAgentAuthorization(
+        { ...request, requestedMode: selectedMode },
+        userConfig,
+      );
 
       console.log('[AuthorizationModal] Authorization created:', result);
 
-      // Notify bridge
-      confirmAuthorizationFromUI({
-        useBiometric,
-        selectedMode,
-      });
+      onConfirm?.({ useBiometric, selectedMode });
 
       Toast.success({
         title: 'Authorization Successful',
@@ -98,11 +132,9 @@ export function AuthorizationModal({
     } catch (error) {
       console.error('[AuthorizationModal] Authorization failed:', error);
 
-      // User-friendly error messages
       let errorMessage = 'Failed to authorize agent. Please try again.';
 
       if (error instanceof Error) {
-        // Handle specific error cases
         if (error.message.includes('password')) {
           errorMessage = 'Invalid password. Please check and try again.';
         } else if (error.message.includes('network')) {
@@ -110,7 +142,7 @@ export function AuthorizationModal({
         } else if (error.message.includes('insufficient')) {
           errorMessage = 'Insufficient balance to complete authorization.';
         } else if (error.message.includes('bytecode')) {
-          errorMessage = 'Mode B (Vault Contract) is not yet fully implemented.';
+          errorMessage = 'Vault Contract mode is not yet fully implemented.';
         } else {
           errorMessage = error.message;
         }
@@ -121,16 +153,15 @@ export function AuthorizationModal({
         message: errorMessage,
       });
 
-      // Notify bridge of rejection
-      rejectAuthorizationFromUI();
+      onReject?.();
     } finally {
       setIsProcessing(false);
     }
-  }, [account, wallet, network, useBiometric, selectedMode, request, fundingAmount]);
+  }, [resolvedAccount, useBiometric, selectedMode, request, fundingAmount, onConfirm, onReject]);
 
   const handleReject = useCallback(() => {
-    rejectAuthorizationFromUI();
-  }, []);
+    onReject?.();
+  }, [onReject]);
 
   if (!visible) return null;
 
@@ -154,6 +185,24 @@ export function AuthorizationModal({
               </SizableText>
             </YStack>
 
+            {/* Current Account Info */}
+            {resolvedAccount ? (
+              <YStack bg="$bgSubdued" p="$3" borderRadius="$2" gap="$1">
+                <SizableText size="$bodySm" color="$textSubdued">
+                  Funding from
+                </SizableText>
+                <SizableText size="$bodyMd" fontWeight="500" numberOfLines={1}>
+                  {resolvedAccount.address.slice(0, 8)}...{resolvedAccount.address.slice(-6)}
+                </SizableText>
+              </YStack>
+            ) : (
+              <YStack bg="$bgCaution" p="$3" borderRadius="$2">
+                <SizableText size="$bodySm" color="$textCaution">
+                  Loading account info...
+                </SizableText>
+              </YStack>
+            )}
+
             {/* Authorization Details */}
             <AuthorizationDetails request={request} />
 
@@ -162,8 +211,7 @@ export function AuthorizationModal({
               <SizableText size="$headingSm" fontWeight="600">
                 Authorization Mode
               </SizableText>
-              
-              {/* Mode Selector Buttons */}
+
               <XStack gap="$2">
                 {[
                   EAgentAuthorizationMode.IsolatedSubWallet,
@@ -177,14 +225,13 @@ export function AuthorizationModal({
                     onPress={() => setSelectedMode(mode)}
                     size="small"
                   >
-                    {mode === EAgentAuthorizationMode.IsolatedSubWallet && 'Mode A'}
-                    {mode === EAgentAuthorizationMode.VaultContract && 'Mode B'}
-                    {mode === EAgentAuthorizationMode.SessionKey && 'Mode C'}
+                    {mode === EAgentAuthorizationMode.IsolatedSubWallet && 'Sub-Wallet'}
+                    {mode === EAgentAuthorizationMode.VaultContract && 'Vault'}
+                    {mode === EAgentAuthorizationMode.SessionKey && 'Session Key'}
                   </Button>
                 ))}
               </XStack>
 
-              {/* Mode Explanation */}
               <ModeExplanation mode={selectedMode} />
             </YStack>
 
@@ -212,7 +259,7 @@ export function AuthorizationModal({
             {/* Security Notice */}
             <YStack bg="$bgCaution" p="$3" borderRadius="$2">
               <SizableText size="$bodySm" color="$textCaution">
-                ⚠️ By authorizing, you grant the AI agent permission to execute
+                By authorizing, you grant the AI agent permission to execute
                 transactions within the specified limits. You can revoke this
                 authorization at any time.
               </SizableText>
@@ -232,7 +279,7 @@ export function AuthorizationModal({
                 flex={1}
                 variant="primary"
                 onPress={handleConfirm}
-                disabled={isProcessing}
+                disabled={isProcessing || !resolvedAccount}
               >
                 {isProcessing ? (
                   <XStack gap="$2" alignItems="center">

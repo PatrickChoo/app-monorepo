@@ -41,7 +41,7 @@ const EVM_CHAINS = [
   'eip155:59144',
 ];
 
-// Non-EVM chains (only support Mode A - isolated sub-wallet)
+// Non-EVM chains (only support Isolated Sub-Wallet)
 const NON_EVM_CHAINS = [
   'solana:mainnet',
   'bitcoin:mainnet',
@@ -56,9 +56,9 @@ const NON_EVM_CHAINS = [
  * 3. Security requirements
  *
  * Selection Logic:
- * - Swap actions on AA-supported chains → Mode C (Session Key)
- * - Transfer actions on Vault-supported chains → Mode B (Vault Contract)
- * - Non-AA/Non-EVM chains → Mode A (Isolated Sub-Wallet)
+ * - Swap actions on AA-supported chains → Session Key
+ * - Transfer actions on Vault-supported chains → Vault Contract
+ * - Non-AA/Non-EVM chains → Isolated Sub-Wallet
  */
 export function chooseAuthorizationMode(
   request: IAgentAuthorizationRequest,
@@ -66,7 +66,7 @@ export function chooseAuthorizationMode(
 ): IModeSelectionResult {
   const { chainId } = request;
 
-  // Check if the chain is non-EVM (only Mode A supported)
+  // Check if the chain is non-EVM (only Isolated Sub-Wallet supported)
   if (NON_EVM_CHAINS.includes(chainId)) {
     return {
       mode: EAgentAuthorizationMode.IsolatedSubWallet,
@@ -75,7 +75,7 @@ export function chooseAuthorizationMode(
     };
   }
 
-  // For swap actions on AA-supported chains, prefer Mode C (Session Key)
+  // For swap actions on AA-supported chains, prefer Session Key
   if (action === 'swap' && AA_SUPPORTED_CHAINS.includes(chainId)) {
     return {
       mode: EAgentAuthorizationMode.SessionKey,
@@ -84,7 +84,7 @@ export function chooseAuthorizationMode(
     };
   }
 
-  // For stake actions on AA-supported chains, prefer Mode C (Session Key)
+  // For stake actions on AA-supported chains, prefer Session Key
   if (action === 'stake' && AA_SUPPORTED_CHAINS.includes(chainId)) {
     return {
       mode: EAgentAuthorizationMode.SessionKey,
@@ -93,7 +93,7 @@ export function chooseAuthorizationMode(
     };
   }
 
-  // For transfer actions on Vault-supported chains, prefer Mode B
+  // For transfer actions on Vault-supported chains, prefer Vault Contract
   if (action === 'transfer' && VAULT_SUPPORTED_CHAINS.includes(chainId)) {
     return {
       mode: EAgentAuthorizationMode.VaultContract,
@@ -103,7 +103,7 @@ export function chooseAuthorizationMode(
     };
   }
 
-  // For any EVM chain, we can fall back to Mode A
+  // For any EVM chain, we can fall back to Isolated Sub-Wallet
   if (EVM_CHAINS.includes(chainId)) {
     return {
       mode: EAgentAuthorizationMode.IsolatedSubWallet,
@@ -112,7 +112,7 @@ export function chooseAuthorizationMode(
     };
   }
 
-  // Default fallback: Mode A (works on all chains)
+  // Default fallback: Isolated Sub-Wallet (works on all chains)
   return {
     mode: EAgentAuthorizationMode.IsolatedSubWallet,
     reason: `Default mode - using isolated sub-wallet for compatibility`,

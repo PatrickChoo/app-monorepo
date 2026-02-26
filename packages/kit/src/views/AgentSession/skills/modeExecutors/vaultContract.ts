@@ -1,5 +1,5 @@
 /**
- * Mode B: Vault Contract Executor
+ * Vault Contract Executor
  * 
  * Deposits funds into a smart contract that enforces:
  * - Spending limits
@@ -20,7 +20,7 @@ import {
 import type { IAuthorizationResult } from '../types';
 
 /**
- * Execute Mode B: Vault Contract
+ * Execute Vault Contract authorization
  * 
  * Flow:
  * 1. Get or deploy Vault contract for this chain
@@ -33,32 +33,33 @@ import type { IAuthorizationResult } from '../types';
  * @param request - Authorization request from AI
  * @returns Authorization result with vault contract address
  */
-export async function executeModeB(
+export async function executeVaultContract(
   request: IAgentAuthorizationRequest,
 ): Promise<IAuthorizationResult> {
-  console.log('[ModeB] Executing Vault Contract authorization');
-  console.log('[ModeB] Request:', request);
+  console.log('[VaultContract] Executing Vault Contract authorization');
+  console.log('[VaultContract] Request:', request);
 
   try {
     // Validate request has required fields
-    if (!request.accountId) {
-      throw new Error('Account ID is required for Mode B');
-    }
     if (!request.requestedAmount) {
-      throw new Error('Requested amount is required for Mode B');
+      throw new Error('Requested amount is required for Vault Contract mode');
     }
 
     // 1. Get or deploy Vault contract
+    // TODO: accountId should come from user config, not from agent request
     const vaultAddress = await getOrDeployVault({
       chainId: request.chainId,
-      accountId: request.accountId,
-      dailyLimit: request.rules?.dailyLimitWei || ethers.parseEther('1').toString(),
+      accountId: request.agentId,
+      dailyLimit: request.rules?.spendingLimitUsd
+        ? ethers.parseEther(String(request.rules.spendingLimitUsd)).toString()
+        : ethers.parseEther('1').toString(),
     });
-    console.log('[ModeB] Vault contract:', vaultAddress);
+    console.log('[VaultContract] Vault contract:', vaultAddress);
 
     // 2. Show confirmation modal to user
     const confirmed = await showAuthorizationModal({
       mode: EAgentAuthorizationMode.VaultContract,
+      agentId: request.agentId,
       agentName: request.agentName,
       chainId: request.chainId,
       networkName: request.networkName,
@@ -78,9 +79,9 @@ export async function executeModeB(
       amount: request.requestedAmount,
       tokenSymbol: request.tokenSymbol,
       chainId: request.chainId,
-      accountId: request.accountId,
+      accountId: request.agentId, // TODO: use actual account ID from user config
     });
-    console.log('[ModeB] Deposit tx:', depositTxHash);
+    console.log('[VaultContract] Deposit tx:', depositTxHash);
 
     // 4. Set spending rules on Vault
     await setVaultRules({
@@ -92,7 +93,7 @@ export async function executeModeB(
         methodWhitelist: request.rules?.methodWhitelist || [],
       },
     });
-    console.log('[ModeB] Vault rules set');
+    console.log('[VaultContract] Vault rules set');
 
     // 5. Create authorization record
     const authorization = await createAuthorization({
@@ -110,7 +111,7 @@ export async function executeModeB(
       rules: request.rules || {},
     });
 
-    console.log('[ModeB] Authorization created:', authorization.id);
+    console.log('[VaultContract] Authorization created:', authorization.id);
 
     // 6. Return result
     return {
@@ -121,7 +122,7 @@ export async function executeModeB(
       allocatedAmount: request.requestedAmount,
     };
   } catch (error) {
-    console.error('[ModeB] Execution failed:', error);
+    console.error('[VaultContract] Execution failed:', error);
     throw error;
   }
 }
@@ -136,7 +137,7 @@ async function getOrDeployVault(params: {
   accountId: string;
   dailyLimit: string; // in wei
 }): Promise<string> {
-  console.log('[ModeB] Getting or deploying Vault for chain:', params.chainId);
+  console.log('[VaultContract] Getting or deploying Vault for chain:', params.chainId);
 
   try {
     // 1. Check for existing Vault in storage
@@ -144,12 +145,12 @@ async function getOrDeployVault(params: {
     const existingVault = await getVaultContract(params.chainId);
 
     if (existingVault) {
-      console.log('[ModeB] Found existing Vault:', existingVault.address);
+      console.log('[VaultContract] Found existing Vault:', existingVault.address);
       return existingVault.address;
     }
 
     // 2. Deploy new Vault contract
-    console.log('[ModeB] Deploying new Vault contract...');
+    console.log('[VaultContract] Deploying new Vault contract...');
     const vaultAddress = await deployVaultContract(params);
 
     // 3. Store Vault address
@@ -160,10 +161,10 @@ async function getOrDeployVault(params: {
       deployedAt: Date.now(),
     });
 
-    console.log('[ModeB] Vault deployed at:', vaultAddress);
+    console.log('[VaultContract] Vault deployed at:', vaultAddress);
     return vaultAddress;
   } catch (error) {
-    console.error('[ModeB] Failed to get/deploy Vault:', error);
+    console.error('[VaultContract] Failed to get/deploy Vault:', error);
     throw error;
   }
 }
@@ -178,7 +179,7 @@ async function deployVaultContract(params: {
   accountId: string;
   dailyLimit: string;
 }): Promise<string> {
-  console.log('[ModeB] Deploying Vault contract:', params);
+  console.log('[VaultContract] Deploying Vault contract:', params);
 
   try {
     // Use ContractService to deploy vault
@@ -194,11 +195,11 @@ async function deployVaultContract(params: {
       initialFunding: '0', // No initial funding on deployment
     });
 
-    console.log('[ModeB] Vault deployed:', result.contractAddress);
+    console.log('[VaultContract] Vault deployed:', result.contractAddress);
     
     return result.contractAddress;
   } catch (error) {
-    console.error('[ModeB] Deployment failed:', error);
+    console.error('[VaultContract] Deployment failed:', error);
     throw error;
   }
 }
@@ -208,7 +209,7 @@ async function deployVaultContract(params: {
  */
 async function getUserPassword(): Promise<string> {
   // TODO: Implement proper password request via OneKey UI
-  console.warn('[ModeB] Password request not implemented - using empty password');
+  console.warn('[VaultContract] Password request not implemented - using empty password');
   return '';
 }
 
@@ -217,21 +218,22 @@ async function getUserPassword(): Promise<string> {
  */
 async function showAuthorizationModal(params: {
   mode: EAgentAuthorizationMode;
+  agentId: string;
   agentName: string;
   chainId: string;
   networkName: string;
   amount?: string;
   tokenSymbol?: string;
   vaultAddress?: string;
-  rules?: any;
+  rules?: Partial<import('../../types').IAgentAuthorizationRule>;
 }): Promise<boolean> {
-  console.log('[ModeB] Showing authorization modal:', params);
+  console.log('[VaultContract] Showing authorization modal:', params);
 
   const { requestAuthorizationFromUI } = await import('../authorizationBridge');
 
   try {
     const result = await requestAuthorizationFromUI({
-      agentId: 'agent-demo',
+      agentId: params.agentId,
       agentName: params.agentName,
       chainId: params.chainId,
       networkName: params.networkName,
@@ -243,7 +245,7 @@ async function showAuthorizationModal(params: {
 
     return result.confirmed;
   } catch (error) {
-    console.error('[ModeB] Modal error:', error);
+    console.error('[VaultContract] Modal error:', error);
     return false;
   }
 }
@@ -260,7 +262,7 @@ async function depositToVault(params: {
   chainId: string;
   accountId: string;
 }): Promise<string> {
-  console.log('[ModeB] Depositing to Vault:', params);
+  console.log('[VaultContract] Depositing to Vault:', params);
   
   try {
     // Use ContractService to fund vault
@@ -277,11 +279,11 @@ async function depositToVault(params: {
       password,
     });
 
-    console.log('[ModeB] Vault funded:', result.txHash);
+    console.log('[VaultContract] Vault funded:', result.txHash);
     
     return result.txHash;
   } catch (error) {
-    console.error('[ModeB] Deposit failed:', error);
+    console.error('[VaultContract] Deposit failed:', error);
     throw error;
   }
 }
@@ -300,7 +302,7 @@ async function setVaultRules(params: {
     methodWhitelist?: string[];
   };
 }): Promise<void> {
-  console.log('[ModeB] Setting Vault rules:', params);
+  console.log('[VaultContract] Setting Vault rules:', params);
   
   // TODO: Real implementation
   // Call Vault.setRules(rules) on the contract
@@ -322,9 +324,9 @@ async function createAuthorization(params: {
   spentAmount?: string;
   remainingAmount?: string;
   tokenSymbol?: string;
-  rules: any;
+  rules: Partial<import('../../types').IAgentAuthorizationRule>;
 }): Promise<{ id: string }> {
-  console.log('[ModeB] Creating authorization:', params);
+  console.log('[VaultContract] Creating authorization:', params);
 
   const { addAuthorization } = await import('../../services/storage');
 

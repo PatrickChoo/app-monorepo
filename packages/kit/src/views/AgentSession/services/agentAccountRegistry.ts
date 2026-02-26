@@ -5,7 +5,7 @@
  * Used to mark accounts in OneKey's account list and prevent duplicate assignments.
  */
 
-import simpleDb from '@onekeyhq/kit-bg/src/dbs/simple/simpleDb';
+import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
 
 export interface IAgentAccountRegistry {
   // Account info
@@ -43,7 +43,7 @@ export async function registerAgentAccount(
     lastUsedAt: Date.now(),
   };
   
-  await simpleDb.agentAccountRegistry.add(record);
+  await backgroundApiProxy.simpleDb.agentAccountRegistry.add(record);
   console.log('[AgentRegistry] Registered:', {
     accountId: record.accountId,
     address: record.address,
@@ -59,7 +59,7 @@ export async function registerAgentAccount(
 export async function getAgentAccountByAccountId(
   accountId: string,
 ): Promise<IAgentAccountRegistry | null> {
-  return simpleDb.agentAccountRegistry.getByAccountId(accountId);
+  return backgroundApiProxy.simpleDb.agentAccountRegistry.getByAccountId(accountId);
 }
 
 /**
@@ -69,14 +69,14 @@ export async function getAgentAccountByAgent(
   agentId: string,
   networkId: string,
 ): Promise<IAgentAccountRegistry | null> {
-  return simpleDb.agentAccountRegistry.getByAgentAndChain(agentId, networkId);
+  return backgroundApiProxy.simpleDb.agentAccountRegistry.getByAgentAndChain(agentId, networkId);
 }
 
 /**
  * Get all agent accounts
  */
 export async function getAllAgentAccounts(): Promise<IAgentAccountRegistry[]> {
-  return simpleDb.agentAccountRegistry.getAll();
+  return backgroundApiProxy.simpleDb.agentAccountRegistry.getAll();
 }
 
 /**
@@ -86,10 +86,10 @@ export async function updateAgentAccountStatus(
   accountId: string,
   status: IAgentAccountRegistry['status'],
 ): Promise<void> {
-  await simpleDb.agentAccountRegistry.updateStatus(accountId, status);
+  await backgroundApiProxy.simpleDb.agentAccountRegistry.updateStatus(accountId, status);
   
   if (status === 'revoked') {
-    await simpleDb.agentAccountRegistry.setRevokedAt(accountId, Date.now());
+    await backgroundApiProxy.simpleDb.agentAccountRegistry.setRevokedAt(accountId, Date.now());
   }
   
   console.log('[AgentRegistry] Updated status:', accountId, '->', status);
@@ -101,7 +101,7 @@ export async function updateAgentAccountStatus(
 export async function updateAgentAccountLastUsed(
   accountId: string,
 ): Promise<void> {
-  await simpleDb.agentAccountRegistry.setLastUsedAt(accountId, Date.now());
+  await backgroundApiProxy.simpleDb.agentAccountRegistry.setLastUsedAt(accountId, Date.now());
 }
 
 /**
@@ -126,7 +126,7 @@ export async function getNextAgentDerivationIndex(
   console.log('[AgentRegistry] Getting next derivation index for:', networkId);
   
   // Use the database method that filters by network
-  const nextIndex = await simpleDb.agentAccountRegistry.getNextDerivationIndex(networkId);
+  const nextIndex = await backgroundApiProxy.simpleDb.agentAccountRegistry.getNextDerivationIndex(networkId);
   
   console.log('[AgentRegistry] Next index:', nextIndex);
   

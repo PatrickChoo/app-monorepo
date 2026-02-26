@@ -2,9 +2,9 @@
  * Demo Scenarios for AI Agent Authorization
  * 
  * These scenarios demonstrate the three authorization modes:
- * - Mode A: Isolated Sub-Wallet
- * - Mode B: Vault Contract
- * - Mode C: Session Key (AA)
+ * - Isolated Sub-Wallet
+ * - Vault Contract
+ * - Session Key (AA)
  */
 
 import { EAgentAuthorizationMode } from '../types';
@@ -17,7 +17,7 @@ import type { IDemoScenario } from '../types';
  * a specific authorization mode based on chain and action type.
  */
 export const DEMO_SCENARIOS: IDemoScenario[] = [
-  // Mode C Demo: Ethereum + Swap → Session Key (AA)
+  // Session Key Demo: Ethereum + Swap
   {
     id: 'ethereum-swap',
     name: 'Ethereum Swap (Uniswap)',
@@ -30,7 +30,7 @@ export const DEMO_SCENARIOS: IDemoScenario[] = [
     amount: '0.1',
   },
   
-  // Mode B Demo: Polygon + Transfer → Vault Contract
+  // Vault Contract Demo: Polygon + Transfer
   {
     id: 'polygon-transfer',
     name: 'Polygon Transfer',
@@ -43,7 +43,7 @@ export const DEMO_SCENARIOS: IDemoScenario[] = [
     amount: '10',
   },
   
-  // Mode A Demo: Bitcoin → Isolated Sub-Wallet
+  // Isolated Sub-Wallet Demo: Bitcoin
   {
     id: 'bitcoin-transfer',
     name: 'Bitcoin Transfer',
@@ -58,7 +58,7 @@ export const DEMO_SCENARIOS: IDemoScenario[] = [
   
   // Additional scenarios for comprehensive testing
   
-  // Mode C: Arbitrum + Swap
+  // Session Key: Arbitrum + Swap
   {
     id: 'arbitrum-swap',
     name: 'Arbitrum Swap',
@@ -71,7 +71,7 @@ export const DEMO_SCENARIOS: IDemoScenario[] = [
     amount: '0.05',
   },
   
-  // Mode B: BNB Chain + Transfer
+  // Vault Contract: BNB Chain + Transfer
   {
     id: 'bnb-transfer',
     name: 'BNB Chain Transfer',
@@ -84,7 +84,7 @@ export const DEMO_SCENARIOS: IDemoScenario[] = [
     amount: '0.5',
   },
   
-  // Mode A: Solana
+  // Isolated Sub-Wallet: Solana
   {
     id: 'solana-transfer',
     name: 'Solana Transfer',
@@ -97,7 +97,7 @@ export const DEMO_SCENARIOS: IDemoScenario[] = [
     amount: '0.1',
   },
   
-  // Mode C: Base + Stake
+  // Session Key: Base + Stake
   {
     id: 'base-stake',
     name: 'Base Staking',

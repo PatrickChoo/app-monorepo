@@ -1,7 +1,7 @@
 /**
  * Agent Session Contract Service
  * 
- * Handles smart contract operations for Agent Sessions (Mode B: Vault Contracts)
+ * Handles smart contract operations for Agent Sessions (Vault Contracts)
  */
 
 import { ethers } from 'ethers';
@@ -24,7 +24,7 @@ interface VaultExecutionResult {
 }
 
 /**
- * Deploy a Vault contract (Mode B)
+ * Deploy a Vault contract (Vault Contract mode)
  * 
  * Deploys a smart contract that acts as a vault for the agent.
  * The owner (main account) has full control over the vault.
@@ -138,7 +138,7 @@ export async function deployVaultContract(params: {
 }
 
 /**
- * Execute transaction via Vault contract (Mode B)
+ * Execute transaction via Vault contract (Vault Contract mode)
  * 
  * Calls the vault's execute() function to perform an action
  * on behalf of the vault contract.

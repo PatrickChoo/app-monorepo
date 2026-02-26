@@ -1,11 +1,11 @@
 // AI Agent Authorization Mode Types
 
 export enum EAgentAuthorizationMode {
-  // Mode A: Isolated Sub-Wallet - AI operates with a dedicated sub-wallet with limited funds
+  // Isolated Sub-Wallet: AI operates with a dedicated sub-wallet with limited funds
   IsolatedSubWallet = 'IsolatedSubWallet',
-  // Mode B: Vault Contract - Funds in smart contract with enforced rules
+  // Vault Contract: Funds in smart contract with enforced rules
   VaultContract = 'VaultContract',
-  // Mode C: Account Abstraction + Session Key - AA wallet with session key for AI
+  // Session Key: Account Abstraction wallet with session key for AI
   SessionKey = 'SessionKey',
 }
 
@@ -57,34 +57,34 @@ export interface IAgentAuthorization {
   createdAt: number;
   updatedAt: number;
   
-  // For Mode A: Agent account address (derived from user's wallet)
+  // Isolated Sub-Wallet: Agent account address (derived from user's wallet)
   agentAccountAddress?: string;
-  // For Mode A: Agent account ID (OneKey internal tracking)
+  // Isolated Sub-Wallet: Agent account ID (OneKey internal tracking)
   agentAccountId?: string;
-  // For Mode A: BIP44 derivation path of the agent account
+  // Isolated Sub-Wallet: BIP44 derivation path of the agent account
   agentAccountPath?: string;
-  // For Mode A: Derivation index in agent-dedicated range (10,000+)
+  // Isolated Sub-Wallet: Derivation index in agent-dedicated range (10,000+)
   agentAccountIndex?: number;
-  // For Mode A: Source wallet ID (which wallet the agent account is derived from)
+  // Isolated Sub-Wallet: Source wallet ID (which wallet the agent account is derived from)
   sourceWalletId?: string;
-  // For Mode A: Funding source account ID
+  // Isolated Sub-Wallet: Funding source account ID
   fundingAccountId?: string;
-  // For Mode A: Funding source account address
+  // Isolated Sub-Wallet: Funding source account address
   fundingAccountAddress?: string;
-  // For Mode A/B: Transaction hash of funding operation
+  // Isolated Sub-Wallet / Vault Contract: Transaction hash of funding operation
   fundingTxHash?: string;
-  
-  // For Mode A: Permission mode
+
+  // Isolated Sub-Wallet: Permission mode
   permissionMode?: 'ask-every-time' | 'always-allow';
-  // For Mode A: Whether private key was exported
+  // Isolated Sub-Wallet: Whether private key was exported
   privateKeyExported?: boolean;
-  
-  // For Mode A: Purpose of authorization
+
+  // Isolated Sub-Wallet: Purpose of authorization
   purpose?: string;
-  
-  // For Mode B: vault contract address
+
+  // Vault Contract: vault contract address
   vaultContractAddress?: string;
-  // For Mode C: session key public key
+  // Session Key: session key public key
   sessionKeyPublicKey?: string;
 }
 

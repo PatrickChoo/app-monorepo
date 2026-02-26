@@ -86,7 +86,7 @@ export class SimpleDbEntityAgentAuthorizations extends SimpleDbEntityBase<IAgent
       }
 
       // Check expiration
-      if (auth.rules.expiresAt && auth.rules.expiresAt < now) {
+      if (auth.rules?.expiresAt && auth.rules.expiresAt < now) {
         // Mark as expired (don't await - do it in background)
         void this.updateAuthorization(auth.id, {
           status: EAgentAuthorizationStatus.Expired,
@@ -135,7 +135,7 @@ export class SimpleDbEntityAgentAuthorizations extends SimpleDbEntityBase<IAgent
       const auth = authorizations[i];
       if (
         auth.status === EAgentAuthorizationStatus.Active &&
-        auth.rules.expiresAt &&
+        auth.rules?.expiresAt &&
         auth.rules.expiresAt < now
       ) {
         authorizations[i] = {

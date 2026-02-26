@@ -1,33 +1,30 @@
 /**
- * Mode A: Isolated Agent Account Executor
- * 
+ * Isolated Sub-Wallet Executor
+ *
  * Creates a dedicated account for AI agent (derived from user's wallet) with a fixed balance.
  * AI can only spend the balance of this isolated account.
- * 
+ *
  * Works on: All chains (EVM and non-EVM)
- * 
- * RENAMED: executeModeA -> createAgentAuthorization
- * See services/authorization.ts for the new implementation
+ *
+ * @deprecated Use createAgentAuthorization() from services/authorization.ts instead
  */
 
+import type { IAgentAuthorizationRequest } from '../../types';
 import type {
-  IAgentAuthorizationRequest,
   IUserAuthorizationConfig,
   IAuthorizationResult,
 } from '../../services/authorization';
 import { createAgentAuthorization } from '../../services/authorization';
 
 /**
- * Execute Mode A: Isolated Agent Account
- * 
+ * Execute Isolated Sub-Wallet authorization
+ *
  * @deprecated Use createAgentAuthorization() instead
- * 
- * This function is kept for backward compatibility.
- * 
+ *
  * @param request - Authorization request from AI
  * @returns Authorization result with agent account info
  */
-export async function executeModeA(
+export async function executeIsolatedSubWallet(
   request: IAgentAuthorizationRequest & {
     walletId: string;
     mainAccountId: string;
@@ -35,26 +32,27 @@ export async function executeModeA(
     permissionMode?: 'ask-every-time' | 'always-allow';
   },
 ): Promise<IAuthorizationResult> {
-  console.log('[ModeA] Executing Isolated Agent Account authorization (deprecated wrapper)');
-  console.log('[ModeA] Redirecting to createAgentAuthorization()');
+  console.log('[IsolatedSubWallet] Executing Isolated Agent Account authorization (deprecated wrapper)');
+  console.log('[IsolatedSubWallet] Redirecting to createAgentAuthorization()');
   
   // Convert old-style request to new format
   const authRequest: IAgentAuthorizationRequest = {
     agentId: request.agentId,
     agentName: request.agentName,
-    agentDescription: request.agentDescription,
-    suggestedAmount: request.suggestedAmount || request.requestedAmount || '0',
-    suggestedToken: request.tokenSymbol || 'ETH',
     chainId: request.chainId,
     networkName: request.networkName,
+    requestedMode: request.requestedMode,
+    requestedAmount: request.requestedAmount,
+    tokenSymbol: request.tokenSymbol,
+    rules: request.rules,
     purpose: request.purpose || 'Agent authorization',
   };
-  
+
   const userConfig: IUserAuthorizationConfig = {
     funding: {
       fromAccountId: request.mainAccountId,
       fromAddress: request.mainAccountAddress,
-      amount: request.requestedAmount || request.suggestedAmount || '0',
+      amount: request.requestedAmount || '0',
       tokenSymbol: request.tokenSymbol || 'ETH',
     },
     permission: {
@@ -66,7 +64,7 @@ export async function executeModeA(
   try {
     return await createAgentAuthorization(authRequest, userConfig);
   } catch (error) {
-    console.error('[ModeA] Execution failed:', error);
+    console.error('[IsolatedSubWallet] Execution failed:', error);
     throw error;
   }
 }

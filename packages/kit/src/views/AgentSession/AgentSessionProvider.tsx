@@ -1,13 +1,16 @@
 import type { PropsWithChildren } from 'react';
 import { useEffect } from 'react';
 
-import { ProviderJotaiContextAgentSession } from './states/atoms';
+import {
+  ProviderJotaiContextAgentSession,
+  usePendingAuthorizationRequestAtom,
+} from './states/atoms';
 import { AuthorizationModal } from './components/AuthorizationModal';
 import {
-  usePendingAuthorizationRequestAtom,
   useLoadAuthorizations,
   useHandleAuthorizationConfirm,
 } from './hooks/useAgentAuthorization';
+import type { EAgentAuthorizationMode } from './types';
 import { registerPendingRequestSetter } from './states/atomSetters';
 import {
   confirmAuthorizationFromUI,
@@ -37,7 +40,7 @@ function AgentSessionProviderInner({ children }: PropsWithChildren) {
   // Handle modal confirmation
   const handleConfirm = async (params: {
     useBiometric: boolean;
-    selectedMode: any;
+    selectedMode: EAgentAuthorizationMode;
   }) => {
     // Notify the bridge
     confirmAuthorizationFromUI({

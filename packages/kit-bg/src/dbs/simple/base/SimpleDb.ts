@@ -557,4 +557,13 @@ export class SimpleDb {
     Object.defineProperty(this, 'agentAuditLogs', { value });
     return value;
   }
+
+  get agentSettings() {
+    const SimpleDbEntityAgentSettings = (
+      require('../entity/SimpleDbEntityAgentSettings') as unknown as typeof import('../entity/SimpleDbEntityAgentSettings')
+    ).SimpleDbEntityAgentSettings;
+    const value = new SimpleDbEntityAgentSettings();
+    Object.defineProperty(this, 'agentSettings', { value });
+    return value;
+  }
 }
