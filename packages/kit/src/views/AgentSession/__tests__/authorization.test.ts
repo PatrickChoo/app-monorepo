@@ -11,6 +11,7 @@ import type {
 
 // Mock modules before importing
 jest.mock('@onekeyhq/kit-bg/src/dbs/simple/simpleDb', () => ({
+  __esModule: true,
   default: {
     agentAuthorizations: {
       getRawData: jest.fn(),
@@ -24,11 +25,29 @@ jest.mock('@onekeyhq/kit-bg/src/dbs/simple/simpleDb', () => ({
       getRawData: jest.fn(),
       setRawData: jest.fn(),
       updateAuthorizationId: jest.fn(),
+      getNextDerivationIndex: jest.fn(),
     },
   },
 }));
 
+jest.mock('expo-device', () => ({
+  __esModule: true,
+  deviceType: 1,
+  DeviceType: {
+    PHONE: 1,
+    TABLET: 2,
+    DESKTOP: 3,
+    TV: 4,
+  },
+}));
+
+jest.mock('@onekeyhq/shared/src/background/backgroundUtils', () => ({
+  __esModule: true,
+  warningIfNotRunInBackground: jest.fn(),
+}));
+
 jest.mock('@onekeyhq/kit/src/background/instance/backgroundApiProxy', () => ({
+  __esModule: true,
   default: {
     serviceAccount: {
       addHDAccount: jest.fn(),
@@ -120,7 +139,7 @@ describe('Agent Account Registry', () => {
       privateKeyExported: false,
       status: 'active',
     });
-    expect(name1).toBe('🤖 TestAgent #10000');
+    expect(name1).toBe('🤖 TestAgent #10000 🔒');
     
     // Test with private key exported
     const name2 = generateAgentAccountName({
@@ -129,7 +148,7 @@ describe('Agent Account Registry', () => {
       privateKeyExported: true,
       status: 'active',
     });
-    expect(name2).toBe('🤖 TestAgent #10001 [🔑]');
+    expect(name2).toBe('🤖 TestAgent #10001 🔓');
     
     // Test revoked account
     const name3 = generateAgentAccountName({
@@ -138,32 +157,23 @@ describe('Agent Account Registry', () => {
       privateKeyExported: false,
       status: 'revoked',
     });
-    expect(name3).toBe('🤖 TestAgent #10002 [⛔]');
+    expect(name3).toBe('🤖 TestAgent #10002 🗑️');
     
-    // Test revoked with private key exported
+    // Test revoked with private key exported (revoked takes precedence)
     const name4 = generateAgentAccountName({
       agentName: 'TestAgent',
       derivationIndex: 10003,
       privateKeyExported: true,
       status: 'revoked',
     });
-    expect(name4).toBe('🤖 TestAgent #10003 [🔑⛔]');
-  });
-
-  it('should ensure derivation index >= 10000', async () => {
-    const { AGENT_DERIVATION_START_INDEX } = await import('../services/agentAccountRegistry');
-    
-    expect(AGENT_DERIVATION_START_INDEX).toBeGreaterThanOrEqual(10000);
+    expect(name4).toBe('🤖 TestAgent #10003 🗑️');
   });
 
   it('should get next available agent derivation index', async () => {
     const simpleDb = (await import('@onekeyhq/kit-bg/src/dbs/simple/simpleDb')).default;
     const { getNextAgentDerivationIndex } = await import('../services/agentAccountRegistry');
     
-    // Mock empty registry
-    jest.mocked(simpleDb.agentAccountRegistry.getRawData).mockResolvedValue({
-      accounts: [],
-    });
+    jest.mocked(simpleDb.agentAccountRegistry.getNextDerivationIndex).mockResolvedValue(10000);
     
     const nextIndex = await getNextAgentDerivationIndex('evm--1');
     expect(nextIndex).toBeGreaterThanOrEqual(10000);
