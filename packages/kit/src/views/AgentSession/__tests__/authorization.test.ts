@@ -65,6 +65,11 @@ jest.mock('@onekeyhq/kit/src/background/instance/backgroundApiProxy', () => ({
     servicePassword: {
       promptPasswordVerifyByAccount: jest.fn(),
     },
+    simpleDb: {
+      agentAccountRegistry: {
+        getNextDerivationIndex: jest.fn(),
+      },
+    },
   },
 }));
 
@@ -170,11 +175,13 @@ describe('Agent Account Registry', () => {
   });
 
   it('should get next available agent derivation index', async () => {
-    const simpleDb = (await import('@onekeyhq/kit-bg/src/dbs/simple/simpleDb')).default;
+    const backgroundApiProxy = (await import('@onekeyhq/kit/src/background/instance/backgroundApiProxy')).default;
     const { getNextAgentDerivationIndex } = await import('../services/agentAccountRegistry');
-    
-    jest.mocked(simpleDb.agentAccountRegistry.getNextDerivationIndex).mockResolvedValue(10000);
-    
+
+    jest
+      .mocked(backgroundApiProxy.simpleDb.agentAccountRegistry.getNextDerivationIndex)
+      .mockResolvedValue(10000);
+
     const nextIndex = await getNextAgentDerivationIndex('evm--1');
     expect(nextIndex).toBeGreaterThanOrEqual(10000);
   });
