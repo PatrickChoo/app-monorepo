@@ -525,7 +525,7 @@ export const useSettingsConfig: () => ISettingsConfig = () => {
                     );
                   },
                 },
-            platformEnv.isWebDappMode
+            platformEnv.isWebDappMode || !platformEnv.isDesktop
               ? undefined
               : {
                   icon: 'RobotSolid',

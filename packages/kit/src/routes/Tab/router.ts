@@ -231,7 +231,7 @@ export const useTabRouterConfig = (params?: IGetTabRouterParams) => {
             hideOnTabBar: isModalStack,
           },
       !platformEnv.isNative ? referFriendsTabConfig : undefined,
-      platformEnv.isDev
+      platformEnv.isDev && platformEnv.isDesktop
         ? {
             name: ETabRoutes.AgentSession,
             tabBarIcon: (focused?: boolean) =>

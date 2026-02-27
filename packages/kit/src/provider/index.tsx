@@ -75,9 +75,13 @@ export function KitProvider(props: any = {}) {
               <ThemeProvider>
                 <NetworkReachabilityTracker />
                 <SplashProvider>
-                  <AgentSessionProvider>
+                  {platformEnv.isDesktop ? (
+                    <AgentSessionProvider>
+                      <Container />
+                    </AgentSessionProvider>
+                  ) : (
                     <Container />
-                  </AgentSessionProvider>
+                  )}
                 </SplashProvider>
                 <PasswordVerifyPromptMount />
                 <WebViewWebEmbedProvider />

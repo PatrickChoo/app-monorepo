@@ -7,6 +7,8 @@ import type {
 } from '@onekeyhq/shared/src/routes';
 import { EModalSettingRoutes } from '@onekeyhq/shared/src/routes';
 
+import platformEnv from '@onekeyhq/shared/src/platformEnv';
+
 import { ModalAddressBookRouter } from '../../AddressBook/router';
 
 const SettingAccountDerivationModal = LazyLoadPage(
@@ -282,15 +284,22 @@ export const BasicModalSettingStack: IModalFlowNavigatorConfig<
     name: EModalSettingRoutes.SettingOneKeyIdKeylessWallet,
     component: OneKeyIdKeylessWalletPage,
   },
-  // AI Agent Authorization
-  {
-    name: EModalSettingRoutes.SettingAgentAuthorizationList,
-    component: AgentAuthorizationListPage,
-  },
-  {
-    name: EModalSettingRoutes.SettingAgentAuthorizationDetail,
-    component: AgentAuthorizationDetailPage,
-  },
+  // AI Agent Authorization (desktop only)
+  ...(platformEnv.isDesktop
+    ? ([
+        {
+          name: EModalSettingRoutes.SettingAgentAuthorizationList,
+          component: AgentAuthorizationListPage,
+        },
+        {
+          name: EModalSettingRoutes.SettingAgentAuthorizationDetail,
+          component: AgentAuthorizationDetailPage,
+        },
+      ] as IModalFlowNavigatorConfig<
+        EModalSettingRoutes,
+        IModalSettingParamList
+      >[])
+    : []),
   ...(ModalAddressBookRouter as IModalFlowNavigatorConfig<
     EModalSettingRoutes | EModalAddressBookRoutes,
     IModalSettingParamList & IModalAddressBookParamList
