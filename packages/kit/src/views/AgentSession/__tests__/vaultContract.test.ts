@@ -6,6 +6,16 @@
 
 import { ethers } from 'ethers';
 
+jest.mock('@onekeyhq/kit/src/background/instance/backgroundApiProxy', () => ({
+  __esModule: true,
+  default: {
+    serviceNetwork: {},
+    serviceAccount: {},
+    servicePassword: {},
+    serviceSend: {},
+  },
+}));
+
 import {
   deployVaultContract,
   executeViaVault,
@@ -19,6 +29,10 @@ import {
  * NOTE: These tests require actual testnet setup
  */
 describe('Vault Contract', () => {
+  const parseEther = (value: string) => ethers.utils.parseEther(value).toString();
+  const parseUnits = (value: string, decimals: number) =>
+    ethers.utils.parseUnits(value, decimals).toString();
+
   const TEST_CONFIG = {
     // Use Goerli testnet for testing
     networkId: 'evm-5', // Goerli
@@ -27,9 +41,9 @@ describe('Vault Contract', () => {
     // Test password (use empty for mock)
     password: '',
     // Daily limit: 1 ETH
-    dailyLimitWei: ethers.parseEther('1').toString(),
+    dailyLimitWei: parseEther('1'),
     // Initial funding: 0.1 ETH
-    initialFunding: ethers.parseEther('0.1').toString(),
+    initialFunding: parseEther('0.1'),
   };
 
   describe('Contract Address Calculation', () => {
@@ -105,7 +119,7 @@ describe('Vault Contract', () => {
         vaultAddress,
         ownerAccountId: TEST_CONFIG.accountId,
         targetAddress,
-        amount: ethers.parseEther('0.01').toString(),
+        amount: parseEther('0.01'),
         networkId: TEST_CONFIG.networkId,
         password: TEST_CONFIG.password,
         data: '0x', // Simple ETH transfer
@@ -127,7 +141,7 @@ describe('Vault Contract', () => {
       ]);
       const transferData = erc20Interface.encodeFunctionData('transfer', [
         '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
-        ethers.parseUnits('10', 6).toString(), // 10 USDC
+        parseUnits('10', 6), // 10 USDC
       ]);
 
       const result = await executeViaVault({
@@ -179,7 +193,7 @@ describe('Vault Contract: Integration Scenarios', () => {
         ownerAccountId: 'test-account',
         networkId: 'evm-5',
         password: '',
-        dailyLimitWei: ethers.parseEther('1').toString(),
+        dailyLimitWei: parseEther('1'),
       });
 
       console.log('[Scenario 1] Vault deployed:', deployment.contractAddress);
@@ -188,7 +202,7 @@ describe('Vault Contract: Integration Scenarios', () => {
       const funding = await fundVault({
         vaultAddress: deployment.contractAddress,
         ownerAccountId: 'test-account',
-        amount: ethers.parseEther('0.1').toString(),
+        amount: parseEther('0.1'),
         networkId: 'evm-5',
         password: '',
       });
@@ -200,7 +214,7 @@ describe('Vault Contract: Integration Scenarios', () => {
         vaultAddress: deployment.contractAddress,
         ownerAccountId: 'test-account',
         targetAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
-        amount: ethers.parseEther('0.05').toString(),
+        amount: parseEther('0.05'),
         networkId: 'evm-5',
         password: '',
       });
@@ -214,7 +228,7 @@ describe('Vault Contract: Integration Scenarios', () => {
         accountId: 'test-account',
       });
 
-      expect(info.dailySpent).toBe(ethers.parseEther('0.05').toString());
+      expect(info.dailySpent).toBe(parseEther('0.05'));
       console.log('[Scenario 1] Vault state:', info);
     });
   });
@@ -222,14 +236,14 @@ describe('Vault Contract: Integration Scenarios', () => {
   describe('Scenario 2: Daily Limit Enforcement', () => {
     it.skip('should enforce daily spending limit', async () => {
       const vaultAddress = '0x0000000000000000000000000000000000000000';
-      const dailyLimit = ethers.parseEther('0.1');
+      const dailyLimit = parseEther('0.1');
 
       // Try to spend more than daily limit
       const execution = await executeViaVault({
         vaultAddress,
         ownerAccountId: 'test-account',
         targetAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
-        amount: ethers.parseEther('0.2').toString(), // Exceeds 0.1 limit
+        amount: parseEther('0.2'), // Exceeds 0.1 limit
         networkId: 'evm-5',
         password: '',
       });

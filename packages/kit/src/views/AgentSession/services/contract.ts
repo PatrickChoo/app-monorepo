@@ -293,11 +293,16 @@ export function calculateContractAddress(
   nonce: number,
 ): string {
   try {
-    // ethers.js provides a utility for this
-    const contractAddress = ethers.getCreateAddress({
-      from: deployerAddress,
-      nonce,
-    });
+    // ethers.js utility differs between v5/v6
+    const contractAddress = (ethers as any).getCreateAddress
+      ? (ethers as any).getCreateAddress({
+          from: deployerAddress,
+          nonce,
+        })
+      : ethers.utils.getContractAddress({
+          from: deployerAddress,
+          nonce,
+        });
     
     console.log('[ContractService] Calculated contract address:', {
       deployerAddress,
