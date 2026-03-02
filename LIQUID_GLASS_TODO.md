@@ -26,7 +26,7 @@ Adapt core navigation surfaces to a Liquid Glass visual language while preservin
 - [ ] Add usage docs + examples.
 
 ## Phase 2 - Navbar / Header
-- [ ] Integrate Liquid Glass surface into header container.
+- [x] Integrate Liquid Glass surface into header container.
 - [ ] Tune title/icon contrast in light/dark themes.
 - [ ] Validate search bar interaction and focus states.
 - [ ] Validate desktop drag region compatibility.
@@ -57,3 +57,4 @@ Adapt core navigation surfaces to a Liquid Glass visual language while preservin
 
 ## Changelog
 - 2026-03-02: Initialized tracking TODO and phase plan.
+- 2026-03-02: Navbar/Header started with first Liquid Glass surface integration in HeaderView.
