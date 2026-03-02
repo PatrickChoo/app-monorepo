@@ -8,6 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useMedia } from '@onekeyhq/components/src/hooks/useStyle';
 import { useTheme } from '@onekeyhq/components/src/shared/tamagui';
+
+import { BlurView } from '../../../content';
 import platformEnv from '@onekeyhq/shared/src/platformEnv';
 
 import { useIsOverlayPage } from '../../../hocs';
@@ -170,6 +172,8 @@ function HeaderView({
     () => getHeaderTitle(options, routeName),
     [routeName, options],
   );
+  const enableLiquidGlassHeader =
+    !headerTransparent && (platformEnv.isNativeIOS || platformEnv.isDesktop);
   const headerViewKey = useMemo(
     () => `${title}-${routeName}`,
     [title, routeName],
@@ -182,7 +186,7 @@ function HeaderView({
     <DesktopDragZoneBoxView disabled={isModelScreen}>
       <Stack
         alignItems="center"
-        bg={headerBackgroundColor}
+        bg={enableLiquidGlassHeader ? 'transparent' : headerBackgroundColor}
         pt={isOnboardingScreen ? '$10' : undefined}
         style={
           headerTransparent && !platformEnv.isNativeAndroid
@@ -198,6 +202,21 @@ function HeaderView({
               },
         })}
       >
+        {enableLiquidGlassHeader ? (
+          <Stack fullscreen pointerEvents="none">
+            <BlurView intensity={52} contentStyle={{ flex: 1 }} />
+            <Stack fullscreen bg="$bgApp" opacity={0.58} />
+            <Stack
+              position="absolute"
+              left={0}
+              right={0}
+              bottom={0}
+              h="$px"
+              bg="$borderSubdued"
+              opacity={0.8}
+            />
+          </Stack>
+        ) : null}
         <Stack
           alignSelf="stretch"
           px={isOnboardingScreen ? '$16' : '$5'}
