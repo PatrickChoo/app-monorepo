@@ -4,6 +4,7 @@
 > Target: Navbar / Tab Bar / Modal visual adaptation
 > Owner: Patrick + Agent
 > Status: In Progress
+> Execution mode: Auto-arranged (agent continues in sequence unless blocked)
 
 ## Goal
 Adapt core navigation surfaces to a Liquid Glass visual language while preserving readability, performance, and platform consistency.
@@ -54,6 +55,19 @@ Adapt core navigation surfaces to a Liquid Glass visual language while preservin
 ## Current Notes
 - Existing `feat/ios-liquid-glass-icon` only covers icon assets, not navbar/tab bar/modal surfaces.
 - Priority order: **Navbar -> Tab Bar -> Modal**.
+
+## Auto Schedule Plan
+- [x] S1: Navbar/Header first-pass integration
+- [ ] S2: Navbar visual/accessibility tuning
+- [ ] S3: Tab Bar first-pass integration
+- [ ] S4: Tab Bar readability + safe-area tuning
+- [ ] S5: Modal first-pass integration
+- [ ] S6: Modal animation/interaction stability pass
+- [ ] S7: Final QA (visual, accessibility, performance) + release notes
+
+### Auto-run Rule
+- Continue S2 -> S3 -> S4 -> S5 -> S6 -> S7 automatically.
+- Pause only when blocker appears (design decision/risk/perf regression), then report immediately.
 
 ## Changelog
 - 2026-03-02: Initialized tracking TODO and phase plan.
