@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { memo, useCallback, useMemo, useState } from 'react';
+import { StyleSheet } from 'react-native';
 import * as React from 'react';
 
 import { Header } from '@react-navigation/elements';
@@ -174,6 +175,10 @@ function HeaderView({
   );
   const enableLiquidGlassHeader =
     !headerTransparent && (platformEnv.isNativeIOS || platformEnv.isDesktop);
+  const liquidGlassOverlayOpacity = useMemo(
+    () => (platformEnv.isDesktop ? 0.64 : 0.56),
+    [],
+  );
   const headerViewKey = useMemo(
     () => `${title}-${routeName}`,
     [title, routeName],
@@ -204,8 +209,17 @@ function HeaderView({
       >
         {enableLiquidGlassHeader ? (
           <Stack fullscreen pointerEvents="none">
-            <BlurView intensity={52} contentStyle={{ flex: 1 }} />
-            <Stack fullscreen bg="$bgApp" opacity={0.58} />
+            <BlurView intensity={60} contentStyle={{ flex: 1 }} />
+            <Stack fullscreen bg="$bgApp" opacity={liquidGlassOverlayOpacity} />
+            <Stack
+              position="absolute"
+              left={0}
+              right={0}
+              top={0}
+              h={StyleSheet.hairlineWidth}
+              bg="$borderSubdued"
+              opacity={0.35}
+            />
             <Stack
               position="absolute"
               left={0}
@@ -213,7 +227,7 @@ function HeaderView({
               bottom={0}
               h="$px"
               bg="$borderSubdued"
-              opacity={0.8}
+              opacity={0.82}
             />
           </Stack>
         ) : null}
@@ -263,6 +277,7 @@ function HeaderView({
             headerTitleStyle={{
               lineHeight: 28,
               fontWeight: '600',
+              color: theme.text.val,
               ...(headerTitleStyle as any),
             }}
             headerTitleContainerStyle={{
@@ -283,18 +298,20 @@ function HeaderView({
           />
         </Stack>
         {headerSearchBarOptions ? (
-          <HeaderSearchBar
-            autoFocus={headerSearchBarOptions?.autoFocus}
-            placeholder={headerSearchBarOptions?.placeholder}
-            onChangeText={headerSearchBarOptions?.onChangeText}
-            onSearchTextChange={headerSearchBarOptions?.onSearchTextChange}
-            onBlur={headerSearchBarOptions?.onBlur}
-            onFocus={headerSearchBarOptions?.onFocus}
-            onSearchButtonPress={headerSearchBarOptions?.onSearchButtonPress}
-            isModalScreen={isModelScreen}
-            addOns={headerSearchBarOptions?.addOns}
-            searchBarInputValue={headerSearchBarOptions?.searchBarInputValue}
-          />
+          <XStack className="app-region-no-drag" zIndex={1}>
+            <HeaderSearchBar
+              autoFocus={headerSearchBarOptions?.autoFocus}
+              placeholder={headerSearchBarOptions?.placeholder}
+              onChangeText={headerSearchBarOptions?.onChangeText}
+              onSearchTextChange={headerSearchBarOptions?.onSearchTextChange}
+              onBlur={headerSearchBarOptions?.onBlur}
+              onFocus={headerSearchBarOptions?.onFocus}
+              onSearchButtonPress={headerSearchBarOptions?.onSearchButtonPress}
+              isModalScreen={isModelScreen}
+              addOns={headerSearchBarOptions?.addOns}
+              searchBarInputValue={headerSearchBarOptions?.searchBarInputValue}
+            />
+          </XStack>
         ) : null}
       </Stack>
     </DesktopDragZoneBoxView>
