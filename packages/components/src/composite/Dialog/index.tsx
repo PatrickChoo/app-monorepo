@@ -30,7 +30,7 @@ import platformEnv from '@onekeyhq/shared/src/platformEnv';
 import stringUtils from '@onekeyhq/shared/src/utils/stringUtils';
 
 import { Toast } from '../../actions/Toast';
-import { BlurView, Keyboard, SheetGrabber } from '../../content';
+import { Keyboard, SheetGrabber } from '../../content';
 import { Form } from '../../forms/Form';
 import {
   EPageType,
@@ -261,7 +261,6 @@ function DialogFrame({
           enterStyle={{ opacity: 0 } as any}
           exitStyle={{ opacity: 0 } as any}
           backgroundColor="$bgBackdrop"
-          opacity={0.78}
           zIndex={sheetProps?.zIndex || zIndex}
           {...sheetOverlayProps}
         />
@@ -270,7 +269,7 @@ function DialogFrame({
           testID={testID}
           borderTopLeftRadius="$6"
           borderTopRightRadius="$6"
-          bg="transparent"
+          bg="$bg"
           borderCurve="continuous"
           disableHideBottomOverflow
           // Fix width issue for portrait iPad mini - ensure proper dialog width
@@ -278,10 +277,6 @@ function DialogFrame({
           width={platformEnv.isNativeIOSPad ? MAX_CONTENT_WIDTH : undefined}
           maxWidth={platformEnv.isNativeIOSPad ? MAX_CONTENT_WIDTH : undefined}
         >
-          <Stack fullscreen pointerEvents="none">
-            <BlurView intensity={62} contentStyle={{ flex: 1 }} />
-            <Stack fullscreen bg="$bg" opacity={0.78} />
-          </Stack>
           {!disableDrag ? <SheetGrabber /> : null}
           {renderDialogContent}
         </Sheet.Frame>
@@ -314,7 +309,6 @@ function DialogFrame({
             <TMDialog.Overlay
               key="overlay"
               backgroundColor="$bgBackdrop"
-              opacity={0.78}
               animateOnly={['opacity']}
               animation="quick"
               forceMount={forceMount || undefined}
@@ -352,7 +346,6 @@ function DialogFrame({
               exitStyle={{ opacity: 0, scale: 0.85 }}
               borderRadius="$4"
               borderWidth="$0"
-              overflow="hidden"
               $theme-dark={{
                 outlineColor: '$neutral5',
               }}
@@ -365,16 +358,12 @@ function DialogFrame({
                   ? ({ contentVisibility: 'hidden' } as any)
                   : {}),
               }}
-              bg="transparent"
+              bg="$bg"
               width={MAX_CONTENT_WIDTH}
               p="$0"
               {...floatingPanelProps}
               zIndex={floatingPanelProps?.zIndex || zIndex}
             >
-              <Stack fullscreen pointerEvents="none">
-                <BlurView intensity={58} contentStyle={{ flex: 1 }} />
-                <Stack fullscreen bg="$bg" opacity={0.82} />
-              </Stack>
               {renderDialogContent}
             </TMDialog.Content>
           </Stack>

@@ -8,7 +8,6 @@ import {
   isNativeTablet,
   useSafeAreaInsets,
 } from '@onekeyhq/components/src/hooks';
-import { BlurView } from '@onekeyhq/components/src/content';
 import { Stack } from '@onekeyhq/components/src/primitives';
 import type { IKeyOfIcons } from '@onekeyhq/components/src/primitives';
 import {
@@ -152,33 +151,14 @@ export default function MobileBottomTabBar({
       }),
     [descriptors, extraConfig?.name, handleRoutePress, routes, state.index],
   );
-  const enableLiquidGlassTabBar = platformEnv.isNativeIOS;
-
   return (
     <Stack
       testID="Mobile-AppTabBar"
       borderTopWidth={StyleSheet.hairlineWidth}
-      bg={enableLiquidGlassTabBar ? 'transparent' : '$bgApp'}
+      bg="$bgApp"
       borderTopColor="$borderSubdued"
       pb={bottom}
-      overflow="hidden"
-      position="relative"
     >
-      {enableLiquidGlassTabBar ? (
-        <Stack fullscreen pointerEvents="none">
-          <BlurView intensity={56} contentStyle={{ flex: 1 }} />
-          <Stack fullscreen bg="$bgApp" opacity={0.58} />
-          <Stack
-            position="absolute"
-            top={0}
-            left={0}
-            right={0}
-            h={StyleSheet.hairlineWidth}
-            bg="$borderSubdued"
-            opacity={0.8}
-          />
-        </Stack>
-      ) : null}
       <View
         style={{
           flexDirection: 'row',
