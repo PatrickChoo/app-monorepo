@@ -32,6 +32,7 @@ export function MobileTabItem(
           mt="$0.5"
           size="$headingXxs"
           color={selected ? '$text' : '$textSubdued'}
+          fontWeight={selected ? '600' : '500'}
         >
           {label}
         </SizableText>
