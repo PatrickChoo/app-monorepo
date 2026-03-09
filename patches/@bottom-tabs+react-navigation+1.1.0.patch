@@ -1,0 +1,280 @@
+diff --git a/node_modules/@bottom-tabs/react-navigation/lib/commonjs/views/NativeBottomTabView.js b/node_modules/@bottom-tabs/react-navigation/lib/commonjs/views/NativeBottomTabView.js
+index 225ff91..ed8fd8a 100644
+--- a/node_modules/@bottom-tabs/react-navigation/lib/commonjs/views/NativeBottomTabView.js
++++ b/node_modules/@bottom-tabs/react-navigation/lib/commonjs/views/NativeBottomTabView.js
+@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", {
+   value: true
+ });
+ exports.default = NativeBottomTabView;
++var React = require("react");
+ var _native = require("@react-navigation/native");
+ var _reactNativeBottomTabs = _interopRequireDefault(require("react-native-bottom-tabs"));
+ var _jsxRuntime = require("react/jsx-runtime");
+@@ -15,9 +16,28 @@ function NativeBottomTabView({
+   tabBar,
+   ...rest
+ }) {
++  const [optimisticRouteKey, setOptimisticRouteKey] = React.useState(undefined);
++  const optimisticIndex = React.useMemo(() => {
++    if (!optimisticRouteKey) {
++      return -1;
++    }
++    return state.routes.findIndex(route => route.key === optimisticRouteKey);
++  }, [optimisticRouteKey, state.routes]);
++  const effectiveState = React.useMemo(() => optimisticIndex >= 0 ? {
++    ...state,
++    index: optimisticIndex
++  } : state, [optimisticIndex, state]);
++  React.useEffect(() => {
++    if (!optimisticRouteKey) {
++      return;
++    }
++    if (optimisticIndex === -1 || optimisticIndex === state.index) {
++      setOptimisticRouteKey(undefined);
++    }
++  }, [optimisticIndex, optimisticRouteKey, state.index]);
+   return /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNativeBottomTabs.default, {
+     ...rest,
+-    navigationState: state,
++    navigationState: effectiveState,
+     renderScene: ({
+       route
+     }) => descriptors[route.key]?.render(),
+@@ -54,7 +74,7 @@ function NativeBottomTabView({
+       route
+     }) => descriptors[route.key]?.options.role,
+     tabBar: tabBar ? () => tabBar({
+-      state,
++      state: effectiveState,
+       descriptors,
+       navigation
+     }) : undefined,
+@@ -96,7 +116,7 @@ function NativeBottomTabView({
+       route
+     }) => descriptors[route.key]?.options.preventsDefault,
+     onIndexChange: index => {
+-      const focused = index === state.index;
++      const focused = index === effectiveState.index;
+       const route = state.routes[index];
+       if (!route) {
+         return;
+@@ -106,14 +126,18 @@ function NativeBottomTabView({
+         target: route.key,
+         canPreventDefault: true
+       });
+-      if (focused || event.defaultPrevented || descriptors[route.key]?.options.preventsDefault) {
++      if (focused) {
+         return;
+-      } else {
+-        navigation.dispatch({
+-          ..._native.CommonActions.navigate(route),
+-          target: state.key
+-        });
+       }
++      if (event.defaultPrevented || descriptors[route.key]?.options.preventsDefault) {
++        setOptimisticRouteKey(undefined);
++        return;
++      }
++      setOptimisticRouteKey(route.key);
++      navigation.dispatch({
++        ..._native.CommonActions.navigate(route),
++        target: state.key
++      });
+     }
+   });
+ }
+diff --git a/node_modules/@bottom-tabs/react-navigation/lib/module/views/NativeBottomTabView.js b/node_modules/@bottom-tabs/react-navigation/lib/module/views/NativeBottomTabView.js
+index a136850..adc1c70 100644
+--- a/node_modules/@bottom-tabs/react-navigation/lib/module/views/NativeBottomTabView.js
++++ b/node_modules/@bottom-tabs/react-navigation/lib/module/views/NativeBottomTabView.js
+@@ -1,5 +1,6 @@
+ "use strict";
+ 
++import * as React from 'react';
+ import { CommonActions } from '@react-navigation/native';
+ import TabView from 'react-native-bottom-tabs';
+ import { jsx as _jsx } from "react/jsx-runtime";
+@@ -10,9 +11,28 @@ export default function NativeBottomTabView({
+   tabBar,
+   ...rest
+ }) {
++  const [optimisticRouteKey, setOptimisticRouteKey] = React.useState(undefined);
++  const optimisticIndex = React.useMemo(() => {
++    if (!optimisticRouteKey) {
++      return -1;
++    }
++    return state.routes.findIndex(route => route.key === optimisticRouteKey);
++  }, [optimisticRouteKey, state.routes]);
++  const effectiveState = React.useMemo(() => optimisticIndex >= 0 ? {
++    ...state,
++    index: optimisticIndex
++  } : state, [optimisticIndex, state]);
++  React.useEffect(() => {
++    if (!optimisticRouteKey) {
++      return;
++    }
++    if (optimisticIndex === -1 || optimisticIndex === state.index) {
++      setOptimisticRouteKey(undefined);
++    }
++  }, [optimisticIndex, optimisticRouteKey, state.index]);
+   return /*#__PURE__*/_jsx(TabView, {
+     ...rest,
+-    navigationState: state,
++    navigationState: effectiveState,
+     renderScene: ({
+       route
+     }) => descriptors[route.key]?.render(),
+@@ -49,7 +69,7 @@ export default function NativeBottomTabView({
+       route
+     }) => descriptors[route.key]?.options.role,
+     tabBar: tabBar ? () => tabBar({
+-      state,
++      state: effectiveState,
+       descriptors,
+       navigation
+     }) : undefined,
+@@ -91,7 +111,7 @@ export default function NativeBottomTabView({
+       route
+     }) => descriptors[route.key]?.options.preventsDefault,
+     onIndexChange: index => {
+-      const focused = index === state.index;
++      const focused = index === effectiveState.index;
+       const route = state.routes[index];
+       if (!route) {
+         return;
+@@ -101,14 +121,18 @@ export default function NativeBottomTabView({
+         target: route.key,
+         canPreventDefault: true
+       });
+-      if (focused || event.defaultPrevented || descriptors[route.key]?.options.preventsDefault) {
++      if (focused) {
+         return;
+-      } else {
+-        navigation.dispatch({
+-          ...CommonActions.navigate(route),
+-          target: state.key
+-        });
+       }
++      if (event.defaultPrevented || descriptors[route.key]?.options.preventsDefault) {
++        setOptimisticRouteKey(undefined);
++        return;
++      }
++      setOptimisticRouteKey(route.key);
++      navigation.dispatch({
++        ...CommonActions.navigate(route),
++        target: state.key
++      });
+     }
+   });
+ }
+diff --git a/node_modules/@bottom-tabs/react-navigation/src/views/NativeBottomTabView.tsx b/node_modules/@bottom-tabs/react-navigation/src/views/NativeBottomTabView.tsx
+index 8f1838b..c1e6ba0 100644
+--- a/node_modules/@bottom-tabs/react-navigation/src/views/NativeBottomTabView.tsx
++++ b/node_modules/@bottom-tabs/react-navigation/src/views/NativeBottomTabView.tsx
+@@ -1,3 +1,5 @@
++import * as React from 'react';
++
+ import {
+   type ParamListBase,
+   type TabNavigationState,
+@@ -24,10 +26,43 @@ export default function NativeBottomTabView({
+   tabBar,
+   ...rest
+ }: Props) {
++  const [optimisticRouteKey, setOptimisticRouteKey] = React.useState<
++    string | undefined
++  >(undefined);
++
++  const optimisticIndex = React.useMemo(() => {
++    if (!optimisticRouteKey) {
++      return -1;
++    }
++
++    return state.routes.findIndex((route) => route.key === optimisticRouteKey);
++  }, [optimisticRouteKey, state.routes]);
++
++  const effectiveState = React.useMemo(
++    () =>
++      optimisticIndex >= 0
++        ? {
++            ...state,
++            index: optimisticIndex,
++          }
++        : state,
++    [optimisticIndex, state],
++  );
++
++  React.useEffect(() => {
++    if (!optimisticRouteKey) {
++      return;
++    }
++
++    if (optimisticIndex === -1 || optimisticIndex === state.index) {
++      setOptimisticRouteKey(undefined);
++    }
++  }, [optimisticIndex, optimisticRouteKey, state.index]);
++
+   return (
+     <TabView
+       {...rest}
+-      navigationState={state}
++      navigationState={effectiveState}
+       renderScene={({ route }) => descriptors[route.key]?.render()}
+       getActiveTintColor={({ route }) => {
+         return descriptors[route.key]?.options.tabBarActiveTintColor;
+@@ -57,7 +92,14 @@ export default function NativeBottomTabView({
+       }
+       getRole={({ route }) => descriptors[route.key]?.options.role}
+       tabBar={
+-        tabBar ? () => tabBar({ state, descriptors, navigation }) : undefined
++        tabBar
++          ? () =>
++              tabBar({
++                state: effectiveState,
++                descriptors,
++                navigation,
++              })
++          : undefined
+       }
+       getIcon={({ route, focused }) => {
+         const options = descriptors[route.key]?.options;
+@@ -89,7 +131,7 @@ export default function NativeBottomTabView({
+         descriptors[route.key]?.options.preventsDefault
+       }
+       onIndexChange={(index) => {
+-        const focused = index === state.index;
++        const focused = index === effectiveState.index;
+         const route = state.routes[index];
+         if (!route) {
+           return;
+@@ -101,18 +143,24 @@ export default function NativeBottomTabView({
+           canPreventDefault: true,
+         });
+ 
++        if (focused) {
++          return;
++        }
++
+         if (
+-          focused ||
+           event.defaultPrevented ||
+           descriptors[route.key]?.options.preventsDefault
+         ) {
++          setOptimisticRouteKey(undefined);
+           return;
+-        } else {
+-          navigation.dispatch({
+-            ...CommonActions.navigate(route),
+-            target: state.key,
+-          });
+         }
++
++        setOptimisticRouteKey(route.key);
++
++        navigation.dispatch({
++          ...CommonActions.navigate(route),
++          target: state.key,
++        });
+       }}
+     />
+   );

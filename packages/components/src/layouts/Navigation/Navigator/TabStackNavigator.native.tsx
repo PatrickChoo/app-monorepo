@@ -176,16 +176,24 @@ export function TabStackNavigator<RouteName extends string>({
         return tabBarHidden;
     }
   }, [tabBarHidden, splitViewType, isLandscape]);
+  const enableSystemLiquidGlassTabBar = platformEnv.isNativeIOS;
+
   return (
     <NativeTab.Navigator
       labeled
       hapticFeedbackEnabled
       disablePageAnimations
-      ignoreBottomInsets
+      minimizeBehavior={
+        enableSystemLiquidGlassTabBar ? 'automatic' : undefined
+      }
+      scrollEdgeAppearance={
+        enableSystemLiquidGlassTabBar ? 'transparent' : undefined
+      }
       sidebarAdaptable={false}
       tabBarHidden={hidden}
       tabBarActiveTintColor={theme.iconActive.val}
       tabBarInactiveTintColor={theme.iconSubdued.val}
+      translucent={enableSystemLiquidGlassTabBar}
       tabBarStyle={
         platformEnv.isNativeAndroid
           ? { backgroundColor: theme.bg.val }

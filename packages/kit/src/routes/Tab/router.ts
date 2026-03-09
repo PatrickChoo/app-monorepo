@@ -28,37 +28,30 @@ import { multiTabBrowserRouters } from './MultiTabBrowser/router';
 import { referFriendsRouters } from './ReferFriends/router';
 import { swapRouters } from './Swap/router';
 
-// Native tab icons using SVG files from @onekeyhq/components/svg
-// The native tab bar will tint icons using tabBarActiveTintColor/tabBarInactiveTintColor
+// Native tab icons using iOS asset catalog (PDF imagesets in Images.xcassets)
+// Focused = filled (solid), Unfocused = outline
 const nativeTabIcons = {
-  wallet: ({ focused }: { focused: boolean }): INativeTabBarIcon =>
-    focused
-      ? require('@onekeyhq/components/svg/solid/wallet-4.svg')
-      : require('@onekeyhq/components/svg/outline/wallet-4.svg'),
-  swap: ({ focused }: { focused: boolean }): INativeTabBarIcon =>
-    focused
-      ? require('@onekeyhq/components/svg/solid/switch-hor.svg')
-      : require('@onekeyhq/components/svg/outline/switch-hor.svg'),
-  discover: ({ focused }: { focused: boolean }): INativeTabBarIcon =>
-    focused
-      ? require('@onekeyhq/components/svg/solid/compass.svg')
-      : require('@onekeyhq/components/svg/outline/compass.svg'),
-  market: ({ focused }: { focused: boolean }): INativeTabBarIcon =>
-    focused
-      ? require('@onekeyhq/components/svg/solid/trading-view-candles.svg')
-      : require('@onekeyhq/components/svg/outline/trading-view-candles.svg'),
-  perp: ({ focused }: { focused: boolean }): INativeTabBarIcon =>
-    focused
-      ? require('@onekeyhq/components/svg/solid/trade.svg')
-      : require('@onekeyhq/components/svg/outline/trade.svg'),
-  earn: ({ focused }: { focused: boolean }): INativeTabBarIcon =>
-    focused
-      ? require('@onekeyhq/components/svg/solid/coins.svg')
-      : require('@onekeyhq/components/svg/outline/coins.svg'),
-  developer: ({ focused }: { focused: boolean }): INativeTabBarIcon =>
-    focused
-      ? require('@onekeyhq/components/svg/solid/code-brackets.svg')
-      : require('@onekeyhq/components/svg/outline/code-brackets.svg'),
+  wallet: ({ focused }: { focused: boolean }): INativeTabBarIcon => ({
+    uri: focused ? 'tab_wallet_filled' : 'tab_wallet_outline',
+  }),
+  swap: ({ focused }: { focused: boolean }): INativeTabBarIcon => ({
+    uri: focused ? 'tab_swap_filled' : 'tab_swap_outline',
+  }),
+  discover: ({ focused }: { focused: boolean }): INativeTabBarIcon => ({
+    uri: focused ? 'tab_discover_filled' : 'tab_discover_outline',
+  }),
+  market: ({ focused }: { focused: boolean }): INativeTabBarIcon => ({
+    uri: focused ? 'tab_market_filled' : 'tab_market_outline',
+  }),
+  perp: ({ focused }: { focused: boolean }): INativeTabBarIcon => ({
+    uri: focused ? 'tab_perp_filled' : 'tab_perp_outline',
+  }),
+  earn: ({ focused }: { focused: boolean }): INativeTabBarIcon => ({
+    uri: focused ? 'tab_earn_filled' : 'tab_earn_outline',
+  }),
+  developer: ({ focused }: { focused: boolean }): INativeTabBarIcon => ({
+    uri: focused ? 'tab_developer_filled' : 'tab_developer_outline',
+  }),
 };
 
 type IGetTabRouterParams = {

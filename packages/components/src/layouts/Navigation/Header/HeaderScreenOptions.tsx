@@ -2,8 +2,12 @@ import type { ReactNode } from 'react';
 
 import { getFontSize } from '@onekeyhq/components/src/shared/tamagui';
 import type { VariableVal } from '@onekeyhq/components/src/shared/tamagui';
+import platformEnv from '@onekeyhq/shared/src/platformEnv';
 
-import { hasNativeHeaderView } from '../Navigator/CommonConfig';
+import {
+  hasNativeHeaderView,
+  useCustomHeaderViewOnIOS,
+} from '../Navigator/CommonConfig';
 
 import HeaderBackButton from './HeaderBackButton';
 import HeaderView from './HeaderView';
@@ -33,15 +37,29 @@ export function makeHeaderScreenOptions({
   bgColor: VariableVal;
   titleColor: VariableVal;
 }): IStackNavigationOptions {
-  // It's only for iOS, see CommonConfig.hasNativeHeaderView
-  if (hasNativeHeaderView) {
+  // Keep the native iOS header for pushed pages so system Liquid Glass and
+  // native search/header behaviors continue to work.
+  if (hasNativeHeaderView && !useCustomHeaderViewOnIOS) {
     const state = currentNavigation?.getState();
     const isCanGoBack = (state?.index ?? 0) > 0;
+    const shouldUseCustomHeaderLeft =
+      (isModelScreen || isOnboardingScreen) && !isRootScreen && !isCanGoBack;
 
     return {
-      headerStyle: {
-        backgroundColor: bgColor as string,
-      },
+      ...(platformEnv.isNativeIOS
+        ? undefined
+        : {
+            headerStyle: {
+              backgroundColor: bgColor as string,
+            },
+          }),
+      ...(platformEnv.isNativeIOS
+        ? {
+            scrollEdgeEffects: {
+              top: 'automatic',
+            },
+          }
+        : undefined),
       headerTitleStyle: {
         fontSize: getFontSize('$headingLg'),
         color: titleColor as string,
@@ -51,19 +69,26 @@ export function makeHeaderScreenOptions({
          we still cannot remove it here.
          because RNSSearchBar seems will read an incorrect default value.
       */
-      headerTransparent: false,
+      ...(platformEnv.isNativeIOS
+        ? undefined
+        : {
+            headerTransparent: false,
+          }),
       headerTitleAlign: 'left',
-      // TODO: don't override the headerLeft on iOS
-      headerLeft: (props: HeaderBackButtonProps): ReactNode => (
-        <HeaderBackButton
-          onPress={currentNavigation?.goBack}
-          isModelScreen={isModelScreen}
-          isRootScreen={isRootScreen}
-          isOnboardingScreen={isOnboardingScreen}
-          {...props}
-          canGoBack={isCanGoBack}
-        />
-      ),
+      ...(shouldUseCustomHeaderLeft
+        ? {
+            headerLeft: (props: HeaderBackButtonProps): ReactNode => (
+              <HeaderBackButton
+                onPress={currentNavigation?.goBack}
+                isModelScreen={isModelScreen}
+                isRootScreen={isRootScreen}
+                isOnboardingScreen={isOnboardingScreen}
+                {...props}
+                canGoBack={isCanGoBack}
+              />
+            ),
+          }
+        : undefined),
     };
   }
 

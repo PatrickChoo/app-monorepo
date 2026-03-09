@@ -3,6 +3,7 @@ export * from './Breadcrumb';
 export * from './HeightTransition';
 export * from './LinearGradient';
 export * from './BlurView';
+export * from './LiquidGlassSurface';
 export * from './Empty';
 export * from './Markdown';
 export * from './LottieView';

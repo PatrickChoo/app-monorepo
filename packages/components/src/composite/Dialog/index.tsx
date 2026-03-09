@@ -30,7 +30,7 @@ import platformEnv from '@onekeyhq/shared/src/platformEnv';
 import stringUtils from '@onekeyhq/shared/src/utils/stringUtils';
 
 import { Toast } from '../../actions/Toast';
-import { BlurView, Keyboard, SheetGrabber } from '../../content';
+import { Keyboard, LiquidGlassSurface, SheetGrabber } from '../../content';
 import { Form } from '../../forms/Form';
 import {
   EPageType,
@@ -43,6 +43,7 @@ import {
   useModalNavigatorContextPortalId,
   useOverlayZIndex,
 } from '../../hooks';
+import { useThemeName } from '../../hooks/useStyle';
 import { usePageContext } from '../../layouts/Page/PageContext';
 import { ScrollView } from '../../layouts/ScrollView';
 import { SizableText, Spinner, Stack } from '../../primitives';
@@ -193,6 +194,15 @@ function DialogFrame({
   }, [onClose, onHeaderCloseButtonPress]);
 
   const media = useMedia();
+  const themeName = useThemeName();
+  const enableLiquidGlassDialog =
+    platformEnv.isNativeIOS || platformEnv.isDesktop;
+  const glassBackdropOpacity = useMemo(() => {
+    if (!enableLiquidGlassDialog) {
+      return undefined;
+    }
+    return /dark/.test(themeName) ? 0.48 : 0.34;
+  }, [enableLiquidGlassDialog, themeName]);
 
   const zIndex = useOverlayZIndex(open, title);
   const renderDialogContent = (
@@ -261,7 +271,7 @@ function DialogFrame({
           enterStyle={{ opacity: 0 } as any}
           exitStyle={{ opacity: 0 } as any}
           backgroundColor="$bgBackdrop"
-          opacity={0.78}
+          opacity={glassBackdropOpacity}
           zIndex={sheetProps?.zIndex || zIndex}
           {...sheetOverlayProps}
         />
@@ -278,12 +288,17 @@ function DialogFrame({
           width={platformEnv.isNativeIOSPad ? MAX_CONTENT_WIDTH : undefined}
           maxWidth={platformEnv.isNativeIOSPad ? MAX_CONTENT_WIDTH : undefined}
         >
-          <Stack fullscreen pointerEvents="none">
-            <BlurView intensity={62} contentStyle={{ flex: 1 }} />
-            <Stack fullscreen bg="$bg" opacity={0.78} />
-          </Stack>
-          {!disableDrag ? <SheetGrabber /> : null}
-          {renderDialogContent}
+          <LiquidGlassSurface
+            enabled={enableLiquidGlassDialog}
+            preset="dialogSheet"
+            surfaceTint="$bg"
+            fallbackBackground="$bg"
+            borderTopLeftRadius="$6"
+            borderTopRightRadius="$6"
+          >
+            {!disableDrag ? <SheetGrabber /> : null}
+            {renderDialogContent}
+          </LiquidGlassSurface>
         </Sheet.Frame>
       </Sheet>
     );
@@ -314,7 +329,7 @@ function DialogFrame({
             <TMDialog.Overlay
               key="overlay"
               backgroundColor="$bgBackdrop"
-              opacity={0.78}
+              opacity={glassBackdropOpacity}
               animateOnly={['opacity']}
               animation="quick"
               forceMount={forceMount || undefined}
@@ -371,11 +386,14 @@ function DialogFrame({
               {...floatingPanelProps}
               zIndex={floatingPanelProps?.zIndex || zIndex}
             >
-              <Stack fullscreen pointerEvents="none">
-                <BlurView intensity={58} contentStyle={{ flex: 1 }} />
-                <Stack fullscreen bg="$bg" opacity={0.82} />
-              </Stack>
-              {renderDialogContent}
+              <LiquidGlassSurface
+                enabled={enableLiquidGlassDialog}
+                preset="dialogModal"
+                surfaceTint="$bg"
+                fallbackBackground="$bg"
+              >
+                {renderDialogContent}
+              </LiquidGlassSurface>
             </TMDialog.Content>
           </Stack>
         ) : null}

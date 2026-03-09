@@ -1,14 +1,14 @@
 import type { ReactElement } from 'react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { StyleSheet, View } from 'react-native';
 import { useThrottledCallback } from 'use-debounce';
 
+import { LiquidGlassSurface } from '@onekeyhq/components/src/content';
 import {
   isNativeTablet,
   useSafeAreaInsets,
 } from '@onekeyhq/components/src/hooks';
-import { BlurView } from '@onekeyhq/components/src/content';
 import { Stack } from '@onekeyhq/components/src/primitives';
 import type { IKeyOfIcons } from '@onekeyhq/components/src/primitives';
 import {
@@ -50,6 +50,14 @@ export default function MobileBottomTabBar({
   const { routes } = state;
   const { bottom } = useSafeAreaInsets();
   const isTablet = isNativeTablet();
+  const activeRouteName = routes[state.index]?.name;
+  const [optimisticFocusedRouteName, setOptimisticFocusedRouteName] =
+    useState(activeRouteName);
+
+  useEffect(() => {
+    setOptimisticFocusedRouteName(activeRouteName);
+  }, [activeRouteName]);
+
   const onTabPress = useCallback(
     (
       route: RouteProp<Record<string, object | undefined>, string>,
@@ -72,6 +80,10 @@ export default function MobileBottomTabBar({
         });
       }
 
+      if (event.defaultPrevented || isActive) {
+        setOptimisticFocusedRouteName(activeRouteName);
+      }
+
       if (!isActive && !event.defaultPrevented) {
         switchTab(route.name as ETabRoutes);
         if (route.name === ETabRoutes.Market) {
@@ -85,7 +97,7 @@ export default function MobileBottomTabBar({
         defaultLogger.app.page.tabBarClick(trackId);
       }
     },
-    [isTablet, navigation],
+    [activeRouteName, isTablet, navigation],
   );
   const onDebouncedTabPress = useThrottledCallback(onTabPress, 250);
   const handleRoutePress = platformEnv.isNativeAndroid
@@ -94,8 +106,10 @@ export default function MobileBottomTabBar({
 
   const tabs = useMemo(
     () =>
-      routes.map((route, index) => {
-        const isActive = index === state.index;
+      routes.map((route) => {
+        const isActive = route.name === activeRouteName;
+        const isFocused =
+          route.name === (optimisticFocusedRouteName ?? activeRouteName);
         const { options } = descriptors[route.key];
 
         if (
@@ -117,6 +131,9 @@ export default function MobileBottomTabBar({
           if (customPress) {
             customPress();
           } else {
+            if (!isActive) {
+              setOptimisticFocusedRouteName(route.name);
+            }
             handleRoutePress(route, isActive, options);
           }
         };
@@ -132,7 +149,7 @@ export default function MobileBottomTabBar({
             label={options?.tabBarLabel as string}
             {...(isOverlay && { style: [StyleSheet.absoluteFill] })}
             selected={renderActive}
-            {...(!(isActive === renderActive) && {
+            {...(!(isFocused === renderActive) && {
               opacity: 0,
             })}
           />
@@ -150,35 +167,27 @@ export default function MobileBottomTabBar({
           </Stack>
         );
       }),
-    [descriptors, extraConfig?.name, handleRoutePress, routes, state.index],
+    [
+      activeRouteName,
+      descriptors,
+      extraConfig?.name,
+      handleRoutePress,
+      optimisticFocusedRouteName,
+      routes,
+    ],
   );
   const enableLiquidGlassTabBar = platformEnv.isNativeIOS;
 
   return (
-    <Stack
+    <LiquidGlassSurface
       testID="Mobile-AppTabBar"
-      borderTopWidth={StyleSheet.hairlineWidth}
-      bg={enableLiquidGlassTabBar ? 'transparent' : '$bgApp'}
+      preset="tabBar"
+      enabled={enableLiquidGlassTabBar}
+      fallbackBackground="$bgApp"
+      borderTopWidth={enableLiquidGlassTabBar ? 0 : StyleSheet.hairlineWidth}
       borderTopColor="$borderSubdued"
       pb={bottom}
-      overflow="hidden"
-      position="relative"
     >
-      {enableLiquidGlassTabBar ? (
-        <Stack fullscreen pointerEvents="none">
-          <BlurView intensity={56} contentStyle={{ flex: 1 }} />
-          <Stack fullscreen bg="$bgApp" opacity={0.58} />
-          <Stack
-            position="absolute"
-            top={0}
-            left={0}
-            right={0}
-            h={StyleSheet.hairlineWidth}
-            bg="$borderSubdued"
-            opacity={0.8}
-          />
-        </Stack>
-      ) : null}
       <View
         style={{
           flexDirection: 'row',
@@ -187,6 +196,6 @@ export default function MobileBottomTabBar({
       >
         {tabs}
       </View>
-    </Stack>
+    </LiquidGlassSurface>
   );
 }

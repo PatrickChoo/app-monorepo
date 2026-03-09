@@ -1,6 +1,13 @@
 import { type ReactNode, useMemo } from 'react';
 
-import { Page, View, XStack, useSafeAreaInsets } from '@onekeyhq/components';
+import {
+  LiquidGlassSurface,
+  Page,
+  Stack,
+  View,
+  XStack,
+  useSafeAreaInsets,
+} from '@onekeyhq/components';
 import type { ETranslations } from '@onekeyhq/shared/src/locale';
 import platformEnv from '@onekeyhq/shared/src/platformEnv';
 import { ETabRoutes } from '@onekeyhq/shared/src/routes';
@@ -40,6 +47,7 @@ export function MDHeader({
   headerPx?: string;
 }) {
   const { top } = useSafeAreaInsets();
+  const enableLiquidGlassNavbar = platformEnv.isNativeIOS;
   const rightActions = useMemo(() => {
     return sceneName === EAccountSelectorSceneName.homeUrlAccount ? (
       <XStack flexShrink={1}>
@@ -75,77 +83,88 @@ export function MDHeader({
   const isHomeTab =
     tabRoute === ETabRoutes.Home &&
     sceneName !== EAccountSelectorSceneName.homeUrlAccount;
+  const fallbackHeaderOffset =
+    !enableLiquidGlassNavbar && (top || platformEnv.isNativeAndroid)
+      ? top || '$2'
+      : undefined;
+  const glassRowTopPadding = enableLiquidGlassNavbar ? top : undefined;
 
   return (
     <>
       <Page.Header headerShown={false} />
       {showBaseHeader ? (
-        <>
-          {isHomeTab ? (
-            <>
-              {/* Row 1: Search bar + notification + more */}
-              <XStack
-                alignItems="center"
-                px={headerPx}
-                h={56}
-                gap="$6"
-                {...(top || platformEnv.isNativeAndroid
-                  ? { mt: top || '$2' }
-                  : {})}
-              >
-                <XStack flex={1}>
-                  <LegacyUniversalSearchInput
-                    size="medium"
-                    containerProps={{
-                      width: '100%',
-                      $gtLg: undefined,
-                    }}
-                  />
+        <LiquidGlassSurface
+          enabled={enableLiquidGlassNavbar}
+          preset="mdHeader"
+          fallbackBackground="$bgApp"
+        >
+          <Stack pt={glassRowTopPadding}>
+            {isHomeTab ? (
+              <>
+                {/* Row 1: Search bar + notification + more */}
+                <XStack
+                  alignItems="center"
+                  px={headerPx}
+                  h={56}
+                  gap="$6"
+                  {...(fallbackHeaderOffset
+                    ? { mt: fallbackHeaderOffset }
+                    : {})}
+                >
+                  <XStack flex={1}>
+                    <LegacyUniversalSearchInput
+                      size="medium"
+                      containerProps={{
+                        width: '100%',
+                        $gtLg: undefined,
+                      }}
+                    />
+                  </XStack>
+                  <HeaderNotificationIconButton testID="header-right-notification" />
+                  <MoreActionButton />
                 </XStack>
-                <HeaderNotificationIconButton testID="header-right-notification" />
-                <MoreActionButton />
-              </XStack>
-              {/* Row 2: Wallet connection (account + network + address) */}
-              <XStack alignItems="center" px={headerPx} h={44}>
-                <HeaderLeft
-                  selectedHeaderTab={selectedHeaderTab}
-                  sceneName={sceneName}
-                  tabRoute={tabRoute}
-                  customHeaderLeftItems={customHeaderLeftItems}
-                />
-              </XStack>
-            </>
-          ) : (
-            <>
-              <XStack
-                alignItems="center"
-                justifyContent="space-between"
-                px={headerPx}
-                h={44}
-                {...(top || platformEnv.isNativeAndroid
-                  ? { mt: top || '$2' }
-                  : {})}
-              >
-                <View>
+                {/* Row 2: Wallet connection (account + network + address) */}
+                <XStack alignItems="center" px={headerPx} h={44}>
                   <HeaderLeft
                     selectedHeaderTab={selectedHeaderTab}
                     sceneName={sceneName}
                     tabRoute={tabRoute}
                     customHeaderLeftItems={customHeaderLeftItems}
                   />
-                </View>
-                <View>
-                  <HeaderTitle sceneName={sceneName} />
-                </View>
-                {rightActions}
-              </XStack>
+                </XStack>
+              </>
+            ) : (
+              <>
+                <XStack
+                  alignItems="center"
+                  justifyContent="space-between"
+                  px={headerPx}
+                  h={44}
+                  {...(fallbackHeaderOffset
+                    ? { mt: fallbackHeaderOffset }
+                    : {})}
+                >
+                  <View>
+                    <HeaderLeft
+                      selectedHeaderTab={selectedHeaderTab}
+                      sceneName={sceneName}
+                      tabRoute={tabRoute}
+                      customHeaderLeftItems={customHeaderLeftItems}
+                    />
+                  </View>
+                  <View>
+                    <HeaderTitle sceneName={sceneName} />
+                  </View>
+                  {rightActions}
+                </XStack>
 
-              {!hideSearch ? (
-                <HeaderMDSearch tabRoute={tabRoute} sceneName={sceneName} />
-              ) : null}
-            </>
-          )}
-        </>
+                {!hideSearch ? (
+                  <HeaderMDSearch tabRoute={tabRoute} sceneName={sceneName} />
+                ) : null}
+              </>
+            )}
+          </Stack>
+        </LiquidGlassSurface>
       ) : (
         <XStack h={top || '$2'} bg="$bgApp" />
       )}

@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { memo, useCallback, useMemo, useState } from 'react';
-import { StyleSheet } from 'react-native';
 import * as React from 'react';
 
 import { Header } from '@react-navigation/elements';
@@ -9,10 +8,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useMedia } from '@onekeyhq/components/src/hooks/useStyle';
 import { useTheme } from '@onekeyhq/components/src/shared/tamagui';
-
-import { BlurView } from '../../../content';
 import platformEnv from '@onekeyhq/shared/src/platformEnv';
 
+import { LiquidGlassSurface } from '../../../content';
 import { useIsOverlayPage } from '../../../hocs';
 import { useIsDesktopModeUIInTabPages } from '../../../hooks';
 import { Stack, XStack } from '../../../primitives';
@@ -173,8 +171,7 @@ function HeaderView({
     () => getHeaderTitle(options, routeName),
     [routeName, options],
   );
-  const enableLiquidGlassHeader =
-    !headerTransparent && (platformEnv.isNativeIOS || platformEnv.isDesktop);
+  const enableLiquidGlassHeader = !headerTransparent && platformEnv.isDesktop;
   const liquidGlassOverlayOpacity = useMemo(
     () => (platformEnv.isDesktop ? 0.64 : 0.56),
     [],
@@ -189,9 +186,12 @@ function HeaderView({
 
   return (
     <DesktopDragZoneBoxView disabled={isModelScreen}>
-      <Stack
+      <LiquidGlassSurface
+        enabled={enableLiquidGlassHeader}
+        preset="header"
+        fallbackBackground={headerBackgroundColor}
+        overlayOpacity={liquidGlassOverlayOpacity}
         alignItems="center"
-        bg={enableLiquidGlassHeader ? 'transparent' : headerBackgroundColor}
         pt={isOnboardingScreen ? '$10' : undefined}
         style={
           headerTransparent && !platformEnv.isNativeAndroid
@@ -207,30 +207,6 @@ function HeaderView({
               },
         })}
       >
-        {enableLiquidGlassHeader ? (
-          <Stack fullscreen pointerEvents="none">
-            <BlurView intensity={60} contentStyle={{ flex: 1 }} />
-            <Stack fullscreen bg="$bgApp" opacity={liquidGlassOverlayOpacity} />
-            <Stack
-              position="absolute"
-              left={0}
-              right={0}
-              top={0}
-              h={StyleSheet.hairlineWidth}
-              bg="$borderSubdued"
-              opacity={0.35}
-            />
-            <Stack
-              position="absolute"
-              left={0}
-              right={0}
-              bottom={0}
-              h="$px"
-              bg="$borderSubdued"
-              opacity={0.82}
-            />
-          </Stack>
-        ) : null}
         <Stack
           alignSelf="stretch"
           px={isOnboardingScreen ? '$16' : '$5'}
@@ -313,7 +289,7 @@ function HeaderView({
             />
           </XStack>
         ) : null}
-      </Stack>
+      </LiquidGlassSurface>
     </DesktopDragZoneBoxView>
   );
 }

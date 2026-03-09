@@ -9,6 +9,10 @@ import platformEnv from '@onekeyhq/shared/src/platformEnv';
 import { useIsOverlayPage } from '../../hocs';
 import { useTheme } from '../../hooks';
 import HeaderSearchBar from '../Navigation/Header/HeaderSearchBar';
+import {
+  hasNativeHeaderView,
+  useCustomHeaderViewOnIOS,
+} from '../Navigation/Navigator/CommonConfig';
 
 import type {
   IModalNavigationOptions,
@@ -87,7 +91,10 @@ function PageHeader(props: IPageHeaderProps) {
     return null;
   }
   // Android & Web HeaderSearchBar in packages/components/src/layouts/Navigation/Header/HeaderView.tsx
-  return platformEnv.isNativeIOS && headerSearchBarOptions ? (
+  return platformEnv.isNativeIOS &&
+    hasNativeHeaderView &&
+    !useCustomHeaderViewOnIOS &&
+    headerSearchBarOptions ? (
     <HeaderSearchBar
       autoFocus={headerSearchBarOptions?.autoFocus}
       placeholder={headerSearchBarOptions?.placeholder}
