@@ -6,6 +6,7 @@ import {
   backgroundMethod,
   toastIfError,
 } from '@onekeyhq/shared/src/background/backgroundDecorators';
+
 import { OneKeyLocalError } from '@onekeyhq/shared/src/errors';
 import { ETranslations } from '@onekeyhq/shared/src/locale';
 import { appLocale } from '@onekeyhq/shared/src/locale/appLocale';
@@ -34,6 +35,7 @@ import type {
   IProxyResponse,
   IRpcProxyResponse,
 } from '@onekeyhq/shared/types/proxy';
+import { EDecodedTxStatus } from '@onekeyhq/shared/types/tx';
 
 import simpleDb from '../dbs/simple/simpleDb';
 import {
@@ -401,21 +403,19 @@ class ServiceAccountProfile extends ServiceBase {
       try {
         // handleAddressBookName
         const addressBookItem =
-          await this.backgroundApi.serviceAddressBook.dangerouslyFindItemWithoutSafeCheck(
-            {
-              networkId: !networkUtils.isEvmNetwork({ networkId })
-                ? networkId
-                : undefined,
-              address: resolveAddress,
-            },
-          );
+          await this.backgroundApi.serviceAddressBook.findItem({
+            networkId: !networkUtils.isEvmNetwork({ networkId })
+              ? networkId
+              : undefined,
+            address: resolveAddress,
+          });
         result.addressBookId = addressBookItem?.id;
         result.isAllowListed = addressBookItem?.isAllowListed;
         result.addressNote = addressBookItem?.note;
         result.addressMemo = addressBookItem?.memo;
         if (addressBookItem?.name) {
           result.addressBookName = `${appLocale.intl.formatMessage({
-            id: ETranslations.global_contact,
+            id: ETranslations.address_book_title,
           })} / ${addressBookItem?.name}`;
         }
       } catch (e) {
@@ -428,6 +428,7 @@ class ServiceAccountProfile extends ServiceBase {
         walletName: string;
         accountName: string;
         accountId: string;
+        walletId?: string;
       }[] = [];
 
       try {
@@ -504,6 +505,7 @@ class ServiceAccountProfile extends ServiceBase {
         result.accountName = item.accountName;
         result.walletAccountName = `${item.walletName} / ${item.accountName}`;
         result.walletAccountId = item.accountId;
+        result.walletId = item.walletId;
         if (enableAddressDeriveInfo) {
           const account =
             await this.backgroundApi.serviceAccount.getNetworkAccountsInSameIndexedAccountIdWithDeriveTypes(
@@ -538,6 +540,82 @@ class ServiceAccountProfile extends ServiceBase {
         result,
       });
 
+      // For EVM networks, override interaction status with transfer-recipient data
+      // so that cross-chain transfers are recognized as "previously transferred"
+      // Skip if badges API already confirmed interaction
+      if (
+        enableAddressInteractionStatus &&
+        accountId &&
+        networkUtils.isEvmNetwork({ networkId }) &&
+        result.addressInteractionStatus !== EAddressInteractionStatus.INTERACTED
+      ) {
+        try {
+          const targetLower = resolveAddress.toLowerCase();
+          let isInRecipients = false;
+
+          // Check EVM transfer-recipient API with current networkId
+          const { data: recipients } =
+            await this.backgroundApi.serviceHistory.fetchTransferRecipients({
+              accountId,
+              networkId,
+              limit: 10,
+            });
+          isInRecipients = recipients.some(
+            (r) => r.address.toLowerCase() === targetLower,
+          );
+
+          if (!isInRecipients) {
+            // Scope to current networkId instead of onekeyall to avoid
+            // loading all-network history on every address input change
+            const localTxs =
+              await this.backgroundApi.serviceHistory.getAccountsLocalHistoryTxs(
+                {
+                  accountId,
+                  networkId,
+                  excludeTestNetwork: true,
+                },
+              );
+            for (const tx of localTxs) {
+              const decodedTx = tx.decodedTx;
+              if (!decodedTx) {
+                // eslint-disable-next-line no-continue
+                continue;
+              }
+              // Skip failed/dropped transactions to avoid false interaction status
+              if (
+                decodedTx.status === EDecodedTxStatus.Failed ||
+                decodedTx.status === EDecodedTxStatus.Dropped
+              ) {
+                // eslint-disable-next-line no-continue
+                continue;
+              }
+              const actions = decodedTx.actions;
+              if (!actions) {
+                // eslint-disable-next-line no-continue
+                continue;
+              }
+              for (const action of actions) {
+                const sends = action.assetTransfer?.sends;
+                if (sends?.some((s) => s.to?.toLowerCase() === targetLower)) {
+                  isInRecipients = true;
+                  break;
+                }
+              }
+              if (isInRecipients) break;
+            }
+          }
+
+          if (isInRecipients) {
+            result.addressInteractionStatus =
+              EAddressInteractionStatus.INTERACTED;
+            // Preserve all badges from the backend (including warning/critical)
+            // so that scam/phishing warnings are never hidden
+          }
+        } catch {
+          // Keep original badges API result on failure
+        }
+      }
+
       if (result.similarAddress && ignoreSimilarAddressInAddressBook) {
         if (result.addressBookId) {
           result.similarAddress = undefined;
@@ -552,13 +630,11 @@ class ServiceAccountProfile extends ServiceBase {
       enableCheckSimilarAddressInAddressBook
     ) {
       const addressBookItems =
-        await this.backgroundApi.serviceAddressBook.dangerouslyGetItemsWithoutSafeCheck(
-          {
-            networkId: !networkUtils.isEvmNetwork({ networkId })
-              ? networkId
-              : undefined,
-          },
-        );
+        await this.backgroundApi.serviceAddressBook.getItemsByNetwork({
+          networkId: !networkUtils.isEvmNetwork({ networkId })
+            ? networkId
+            : undefined,
+        });
       for (const item of addressBookItems) {
         if (accountUtils.isSimilarAddress(item.address, resolveAddress)) {
           result.similarAddress = item.address;
@@ -754,6 +830,11 @@ class ServiceAccountProfile extends ServiceBase {
     }
 
     await simpleDb.accountValue.updateAllNetworkAccountValue(usdAccountValue);
+
+    // Check DEPOSIT task for rookie guide (fire-and-forget)
+    void this.backgroundApi.serviceRookieGuide.checkAndRecordDepositTask(
+      params.accountId,
+    );
   }
 
   @backgroundMethod()

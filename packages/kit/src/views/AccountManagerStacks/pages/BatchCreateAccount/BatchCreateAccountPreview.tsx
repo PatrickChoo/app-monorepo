@@ -327,11 +327,11 @@ function BatchCreateAccountPreviewPage({
 
   useEffect(() => {
     if (networkId) {
-      // reset deriveType and deselection state after network changed
+      // reset deriveType after network changed
       setDeriveType(undefined);
       setResult([]);
-      setDeselectedExistingIndexes({});
-      deselectedExistingAccountsRef.current = {};
+      // Keep deselectedExistingIndexes and deselectedExistingAccountsRef
+      // across network changes, aligned with normalSelectedIndexes behavior
       // DeriveTypeSelectorFormInput shouldResetDeriveTypeWhenNetworkChanged will handle this internally
     }
   }, [networkId, setResult]);
@@ -515,8 +515,8 @@ function BatchCreateAccountPreviewPage({
           onChange={(v) => {
             if (deriveType !== v) {
               setDeriveType(v);
-              setDeselectedExistingIndexes({});
-              deselectedExistingAccountsRef.current = {};
+              // Keep deselectedExistingIndexes across deriveType changes,
+              // aligned with normalSelectedIndexes behavior
             }
           }}
           networkId={networkId || ''}

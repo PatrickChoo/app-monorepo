@@ -30,11 +30,16 @@ export function ImageWithFallbackSources({
 
   const handleError = useCallback(
     (event: Parameters<NonNullable<IImageV2Props['onError']>>[0]) => {
-      if (index < sourcesLengthRef.current - 1) {
-        setIndex((prev) => prev + 1);
-      } else {
+      if (index >= sourcesLengthRef.current - 1) {
         onError?.(event);
+        return;
       }
+      setIndex((prev) => {
+        if (prev < sourcesLengthRef.current - 1) {
+          return prev + 1;
+        }
+        return prev;
+      });
     },
     [index, onError],
   );
