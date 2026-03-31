@@ -1536,7 +1536,7 @@ function SendDataInputContainer() {
     return (
       <Form.Field
         label={intl.formatMessage({
-          id: ETranslations.global_Note,
+          id: ETranslations.send_tag,
         })}
         optional
         name="note"
@@ -1558,7 +1558,7 @@ function SendDataInputContainer() {
           numberOfLines={2}
           size={media.gtMd ? 'medium' : 'large'}
           placeholder={intl.formatMessage({
-            id: ETranslations.global_Note,
+            id: ETranslations.send_tag_placeholder,
           })}
         />
       </Form.Field>
@@ -1832,7 +1832,14 @@ function SendDataInputContainer() {
   ]);
 
   return (
-    <Page scrollEnabled safeAreaEnabled>
+    <Page
+      scrollEnabled={!shouldShowRecentRecipients}
+      safeAreaEnabled
+      scrollProps={{
+        keyboardDismissMode: 'on-drag',
+        keyboardShouldPersistTaps: 'always',
+      }}
+    >
       <Page.Header
         title={intl.formatMessage({ id: ETranslations.send_title })}
         headerRight={renderAddressSecurityHeaderRightButton}
@@ -1931,7 +1938,6 @@ function SendDataInputContainer() {
             ) : null}
             {shouldShowRecentRecipients ? (
               <RecentRecipients
-                accountId={currentAccount.accountId}
                 networkId={currentAccount.networkId}
                 searchKey={toAddressRaw}
                 isSearchMode={!form.formState.isValid}
@@ -1941,14 +1947,12 @@ function SendDataInputContainer() {
                   note: selectedNote,
                 }) => {
                   setEnsureAddressValid(true);
-                  if (selectedMemo) {
-                    form.setValue('memo', selectedMemo);
-                  }
-                  if (selectedNote) {
-                    form.setValue('note', selectedNote);
-                  }
-                  form.setValue('to', {
-                    raw: selectedAddress,
+                  form.setValue('memo', selectedMemo ?? '');
+                  form.setValue('note', selectedNote ?? '');
+                  form.setValue('to.raw', selectedAddress, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                    shouldValidate: true,
                   });
                 }}
               />

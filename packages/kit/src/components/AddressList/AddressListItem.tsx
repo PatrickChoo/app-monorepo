@@ -1,4 +1,5 @@
 import { useIntl } from 'react-intl';
+import { Pressable } from 'react-native';
 
 import { Badge, Icon, SizableText, XStack, YStack } from '@onekeyhq/components';
 import { ETranslations } from '@onekeyhq/shared/src/locale';
@@ -41,63 +42,68 @@ function AddressListItem(props: IAddressListItemProps) {
     showHierarchyIndicator && shouldDisplayAccount;
 
   return (
-    <YStack
-      gap="$1"
-      px="$5"
-      py="$2"
-      minHeight="$11"
-      justifyContent="center"
+    <Pressable
+      disabled={disabled || !onPress}
       onPress={onPress}
-      {...(onPress &&
-        !disabled && {
-          userSelect: 'none',
-          ...listItemPressStyle,
-        })}
+      pointerEvents="box-only"
     >
-      {shouldDisplayAccount ? (
-        <SizableText size="$bodyMd" color="$textPrimary" numberOfLines={1}>
-          {accountName}
-        </SizableText>
-      ) : null}
-      <XStack gap="$1">
-        {showHierarchyIndicator ? (
-          <Icon
-            size="$4"
-            name="ArrowCornerDownRightSolid"
-            color="$iconSubdued"
-          />
-        ) : null}
-        <YStack gap="$1" flex={1}>
-          {shouldDisplayType ? (
-            <XStack>
-              <Badge badgeSize="sm" badgeType="default">
-                {addressType}
-              </Badge>
-            </XStack>
-          ) : null}
-          <SizableText
-            size="$bodySm"
-            color={isLocal ? '$textSubdued' : '$text'}
-            flex={1}
-            flexWrap="wrap"
-          >
-            {address}
+      <YStack
+        gap="$1"
+        px="$5"
+        py="$2"
+        minHeight="$11"
+        justifyContent="center"
+        {...(onPress &&
+          !disabled && {
+            userSelect: 'none',
+            ...listItemPressStyle,
+          })}
+      >
+        {shouldDisplayAccount ? (
+          <SizableText size="$bodyMd" color="$textPrimary" numberOfLines={1}>
+            {accountName}
           </SizableText>
-          {memo || note ? (
+        ) : null}
+        <XStack gap="$1">
+          {showHierarchyIndicator ? (
+            <Icon
+              size="$4"
+              name="ArrowCornerDownRightSolid"
+              color="$iconSubdued"
+            />
+          ) : null}
+          <YStack gap="$1" flex={1}>
+            {shouldDisplayType ? (
+              <XStack>
+                <Badge badgeSize="sm" badgeType="default">
+                  {addressType}
+                </Badge>
+              </XStack>
+            ) : null}
             <SizableText
               size="$bodySm"
-              color="$textSubdued"
-              flexWrap="wrap"
+              color={isLocal ? '$textSubdued' : '$text'}
               flex={1}
+              flexWrap="wrap"
             >
-              {`${intl.formatMessage({
-                id: note ? ETranslations.global_Note : ETranslations.send_tag,
-              })}: ${memo || note || ''}`}
+              {address}
             </SizableText>
-          ) : null}
-        </YStack>
-      </XStack>
-    </YStack>
+            {memo || note ? (
+              <SizableText
+                size="$bodySm"
+                color="$textSubdued"
+                flexWrap="wrap"
+                flex={1}
+              >
+                {`${intl.formatMessage({
+                  id: ETranslations.send_tag,
+                })}: ${memo || note || ''}`}
+              </SizableText>
+            ) : null}
+          </YStack>
+        </XStack>
+      </YStack>
+    </Pressable>
   );
 }
 
