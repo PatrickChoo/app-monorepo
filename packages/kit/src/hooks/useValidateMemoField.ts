@@ -54,14 +54,20 @@ export function useValidateMemoField({
         });
       }
 
-      if (supportMemoValidation) {
-        return backgroundApiProxy.serviceSend
-          .validateMemo({ networkId, accountId, memo: value })
-          .then((result) => (result.isValid ? undefined : result.errorMessage))
-          .catch(() => undefined);
-      }
+      if (!supportMemoValidation) return undefined;
 
-      return undefined;
+      return (async () => {
+        try {
+          const result = await backgroundApiProxy.serviceSend.validateMemo({
+            networkId,
+            accountId,
+            memo: value,
+          });
+          return result.isValid ? undefined : result.errorMessage;
+        } catch {
+          return undefined;
+        }
+      })();
     },
     [accountId, intl, networkId, numericOnlyMemo, supportMemoValidation],
   );
